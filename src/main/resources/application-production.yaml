@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  mail:
+    password: ${MAIL_PASSWORD}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  initial:
+    admin:
+      email: ${ADMIN_EMAIL}
+      password: ${ADMIN_PASSWORD}
