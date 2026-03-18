@@ -6,6 +6,8 @@ spring:
     password: ${MAIL_PASSWORD}
 
 app:
+  frontend:
+    url: ${FRONTEND_URL}
   jwt:
     secret: ${JWT_SECRET}
   initial:
