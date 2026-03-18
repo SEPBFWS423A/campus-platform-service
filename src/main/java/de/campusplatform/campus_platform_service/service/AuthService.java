@@ -89,6 +89,12 @@ public class AuthService {
         return new LoginResponse(token);
     }
 
+    public UserProfileResponse getUserProfile(String username) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new AppException("error.user.notFound"));
+        return new UserProfileResponse(user.getId(), user.getEmail(), user.getFirstname(), user.getLastname(), user.getRole(), user.getTheme(), user.getBrightness());
+    }
+
     public void updatePersonalDetails(String username, PersonalDetailsRequest request) {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new AppException("error.user.notFound"));

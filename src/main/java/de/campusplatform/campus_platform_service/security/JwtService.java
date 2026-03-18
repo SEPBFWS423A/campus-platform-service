@@ -36,8 +36,6 @@ public class JwtService {
         claims.put("role", user.getRole());
         claims.put("firstname", user.getFirstname());
         claims.put("lastname", user.getLastname());
-        claims.put("theme", user.getTheme());
-        claims.put("brightness", user.getBrightness());
 
         return Jwts.builder()
                 .setClaims(claims)

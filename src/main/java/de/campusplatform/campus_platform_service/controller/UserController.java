@@ -3,6 +3,7 @@ package de.campusplatform.campus_platform_service.controller;
 import de.campusplatform.campus_platform_service.dto.ChangePasswordRequest;
 import de.campusplatform.campus_platform_service.dto.PersonalDetailsRequest;
 import de.campusplatform.campus_platform_service.dto.UserPreferencesRequest;
+import de.campusplatform.campus_platform_service.dto.UserProfileResponse;
 import de.campusplatform.campus_platform_service.service.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -10,13 +11,20 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/user")
+@RequestMapping("/api/users")
 public class UserController {
 
     private final AuthService authService;
 
     public UserController(AuthService authService) {
         this.authService = authService;
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileResponse> getMyProfile(
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return ResponseEntity.ok(authService.getUserProfile(userDetails.getUsername()));
     }
 
     @PutMapping("/profile/details")
