@@ -34,4 +34,4 @@ app:
   resend:
     api:
       key:
-    from: "Campus Platform <noreply@campusplatform.de>"
+    from: "Campus Platform <email@campusplatform.de>"

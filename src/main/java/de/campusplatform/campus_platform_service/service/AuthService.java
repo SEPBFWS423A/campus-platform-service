@@ -132,7 +132,8 @@ public class AuthService {
     }
 
     public void sendPasswordResetToken(String email) {
-        userRepository.findByEmail(email).ifPresent(user -> {
+        String normalizedEmail = email.trim().toLowerCase();
+        userRepository.findByEmail(normalizedEmail).ifPresent(user -> {
             String token = UUID.randomUUID().toString();
             createPasswordResetToken(user, token);
             emailService.sendPasswordResetEmail(user, token);
