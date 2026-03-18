@@ -2,9 +2,6 @@ spring:
   datasource:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
-  mail:
-    password: ${MAIL_PASSWORD}
-
 app:
   frontend:
     url: ${FRONTEND_URL}
@@ -14,3 +11,6 @@ app:
     admin:
       email: ${ADMIN_EMAIL}
       password: ${ADMIN_PASSWORD}
+  resend:
+    api:
+      key: ${RESEND_API_KEY}

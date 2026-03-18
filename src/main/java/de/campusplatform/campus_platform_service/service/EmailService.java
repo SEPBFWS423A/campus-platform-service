@@ -1,14 +1,15 @@
 package de.campusplatform.campus_platform_service.service;
 
+import com.resend.Resend;
+import com.resend.core.exception.ResendException;
+import com.resend.services.emails.model.CreateEmailOptions;
+import com.resend.services.emails.model.CreateEmailResponse;
 import de.campusplatform.campus_platform_service.model.Invitation;
 import de.campusplatform.campus_platform_service.model.User;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,17 +17,14 @@ public class EmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
 
-    private final JavaMailSender mailSender;
-
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    @Value("${spring.mail.from}")
+    @Value("${app.resend.from}")
     private String fromEmail;
 
-    public EmailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
-    }
+    @Value("${app.resend.api.key}")
+    private String resendApiKey;
 
     public void sendPasswordResetEmail(User user, String token) {
         String url = frontendUrl + "/reset-password?token=" + token;
@@ -42,16 +40,21 @@ public class EmailService {
         sendEmail(invitation.getEmail(), subject, body);
     }
 
-    private void sendEmail(String to, String subject, String body) {
+    @Async
+    public void sendEmail(String to, String subject, String body) {
+        Resend resend = new Resend(resendApiKey);
+
+        CreateEmailOptions params = CreateEmailOptions.builder()
+                .from(fromEmail)
+                .to(to)
+                .subject(subject)
+                .html(body)
+                .build();
+
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true);
-            helper.setFrom(fromEmail);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(body, true);
-            mailSender.send(message);
-        } catch (MessagingException e) {
+            CreateEmailResponse data = resend.emails().send(params);
+            System.out.println("E-Mail erfolgreich versendet! ID: " + data.getId());
+        } catch (ResendException e) {
             logger.error("Failed to send email to {}", to, e);
             throw new IllegalStateException("Failed to send email");
         }

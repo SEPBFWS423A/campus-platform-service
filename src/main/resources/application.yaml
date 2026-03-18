@@ -19,19 +19,6 @@ spring:
       path: /h2-console
       settings:
         web-allow-others: true
-  mail:
-    host: smtp.resend.com
-    port: 465
-    username: resend
-    password:
-    protocol: smtps
-    from: noreply@campusplatform.de
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
 app:
   frontend:
     url:
@@ -44,3 +31,7 @@ app:
   defaults:
     theme: theme-azure
     brightness: light
+  resend:
+    api:
+      key:
+    from: "Campus Platform <noreply@campusplatform.de>"
