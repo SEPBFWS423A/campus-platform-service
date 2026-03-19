@@ -28,8 +28,14 @@ app:
     admin:
       email:
       password:
+    lecturer:
+      email:
+      password:
+    student:
+      email:
+      password:
   defaults:
-    theme: theme-azure
+    theme: theme-green
     brightness: light
   resend:
     api:
