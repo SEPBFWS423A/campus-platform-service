@@ -34,7 +34,7 @@ public class EmailService {
     }
 
     public void sendInvitationEmail(Invitation invitation) {
-        String url = frontendUrl + "/complete-registration?token=" + invitation.getToken();
+        String url = frontendUrl + "/complete-registration?token=" + invitation.getToken() + "&email=" + invitation.getEmail();
         String subject = "You are invited to join the Campus Platform";
         String body = "<h1>Invitation to Campus Platform</h1><p>Click the link below to complete your registration:</p><a href=\"" + url + "\">Complete Registration</a>";
         sendEmail(invitation.getEmail(), subject, body);
