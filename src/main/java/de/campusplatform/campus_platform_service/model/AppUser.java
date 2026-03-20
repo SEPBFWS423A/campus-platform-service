@@ -34,8 +34,8 @@ public class AppUser {
     private String brightness;
     private String language;
 
-    @OneToOne(mappedBy = "appUser", cascade = CascadeType.ALL, orphanRemoval = true)
-    private StudentProfile studentProfile;
+    @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<StudyGroupMembership> memberships;
 
     @OneToMany(mappedBy = "lecturer", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ModuleLecturer> teachingQualifications;

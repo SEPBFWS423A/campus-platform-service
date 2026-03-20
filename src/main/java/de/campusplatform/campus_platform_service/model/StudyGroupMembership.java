@@ -18,14 +18,12 @@ public class StudyGroupMembership {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "student_user_id")
-    private StudentProfile student;
+    @JoinColumn(name = "student_id")
+    private AppUser student;
 
     @ManyToOne
     @JoinColumn(name = "study_group_id")
     private StudyGroup studyGroup;
 
-    @Builder.Default
-    @Column(name = "joined_at")
     private LocalDateTime joinedAt = LocalDateTime.now();
 }

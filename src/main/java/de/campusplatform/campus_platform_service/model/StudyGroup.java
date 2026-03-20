@@ -20,8 +20,4 @@ public class StudyGroup {
 
     @OneToMany(mappedBy = "studyGroup", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<StudyGroupMembership> memberships;
-
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "specialization_id")
-    private Specialization specialization;
 }
