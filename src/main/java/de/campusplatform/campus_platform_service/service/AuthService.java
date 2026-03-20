@@ -4,10 +4,10 @@ import de.campusplatform.campus_platform_service.dto.*;
 import de.campusplatform.campus_platform_service.exception.AppException;
 import de.campusplatform.campus_platform_service.model.Invitation;
 import de.campusplatform.campus_platform_service.model.InvitationStatus;
-import de.campusplatform.campus_platform_service.model.User;
+import de.campusplatform.campus_platform_service.model.AppUser;
 import de.campusplatform.campus_platform_service.model.VerificationToken;
 import de.campusplatform.campus_platform_service.repository.InvitationRepository;
-import de.campusplatform.campus_platform_service.repository.UserRepository;
+import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 import de.campusplatform.campus_platform_service.repository.VerificationTokenRepository;
 import de.campusplatform.campus_platform_service.security.CustomUserDetails;
 import de.campusplatform.campus_platform_service.security.JwtService;
@@ -19,12 +19,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
-    private final UserRepository userRepository;
+    private final AppUserRepository userRepository;
     private final VerificationTokenRepository tokenRepository;
     private final InvitationRepository invitationRepository;
     private final PasswordEncoder passwordEncoder;
@@ -38,7 +40,7 @@ public class AuthService {
     @Value("${app.defaults.brightness}")
     private String defaultBrightness;
 
-    public AuthService(UserRepository userRepository, VerificationTokenRepository tokenRepository, InvitationRepository invitationRepository, PasswordEncoder passwordEncoder, EmailService emailService, AuthenticationManager authenticationManager, JwtService jwtService) {
+    public AuthService(AppUserRepository userRepository, VerificationTokenRepository tokenRepository, InvitationRepository invitationRepository, PasswordEncoder passwordEncoder, EmailService emailService, AuthenticationManager authenticationManager, JwtService jwtService) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.invitationRepository = invitationRepository;
@@ -62,7 +64,7 @@ public class AuthService {
             throw new AppException("error.invitation.alreadyCompleted");
         }
 
-        User user = new User();
+        AppUser user = new AppUser();
         user.setFirstname(request.getFirstname());
         user.setLastname(request.getLastname());
         user.setEmail(invitation.getEmail());
@@ -83,20 +85,20 @@ public class AuthService {
         );
 
         CustomUserDetails userDetails = (CustomUserDetails) Objects.requireNonNull(authentication.getPrincipal());
-        User user = userDetails.user();
+        AppUser user = userDetails.appUser();
 
         String token = jwtService.generateToken(user);
         return new LoginResponse(token);
     }
 
     public UserProfileResponse getUserProfile(String username) {
-        User user = userRepository.findByEmail(username)
+        AppUser user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new AppException("error.user.notFound"));
         return new UserProfileResponse(user.getId(), user.getEmail(), user.getFirstname(), user.getLastname(), user.getRole(), user.getTheme(), user.getBrightness());
     }
 
     public void updatePersonalDetails(String username, PersonalDetailsRequest request) {
-        User user = userRepository.findByEmail(username)
+        AppUser user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new AppException("error.user.notFound"));
 
         if (StringUtils.hasText(request.getFirstname())) {
@@ -112,8 +114,28 @@ public class AuthService {
         userRepository.save(user);
     }
 
+    public void updateUser(Long id, AdminUserUpdateRequest request) {
+        AppUser user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException("error.user.notFound"));
+
+        if (StringUtils.hasText(request.firstname())) {
+            user.setFirstname(request.firstname());
+        }
+        if (StringUtils.hasText(request.lastname())) {
+            user.setLastname(request.lastname());
+        }
+        if (StringUtils.hasText(request.email())) {
+            user.setEmail(request.email());
+        }
+        if (request.role() != null) {
+            user.setRole(request.role());
+        }
+
+        userRepository.save(user);
+    }
+
     public void updateUserPreferences(String username, UserPreferencesRequest request) {
-        User user = userRepository.findByEmail(username)
+        AppUser user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new AppException("error.user.notFound"));
 
         if (StringUtils.hasText(request.getTheme())) {
@@ -127,7 +149,7 @@ public class AuthService {
     }
 
     public void changePassword(String username, ChangePasswordRequest request) {
-        User user = userRepository.findByEmail(username)
+        AppUser user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new AppException("error.user.notFound"));
 
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
@@ -146,7 +168,7 @@ public class AuthService {
         });
     }
 
-    private void createPasswordResetToken(User user, String token) {
+    private void createPasswordResetToken(AppUser user, String token) {
         VerificationToken passwordResetToken = new VerificationToken(token, user);
         tokenRepository.save(passwordResetToken);
     }
@@ -154,9 +176,22 @@ public class AuthService {
     public void resetPassword(String token, String newPassword) {
         VerificationToken verificationToken = tokenRepository.findByToken(token)
                 .orElseThrow(() -> new AppException("error.verification.invalidToken"));
-        User user = verificationToken.getUser();
+        AppUser user = verificationToken.getUser();
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         tokenRepository.delete(verificationToken);
+    }
+
+    public List<AdminUserResponse> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(user -> new AdminUserResponse(
+                        user.getId(),
+                        user.getFirstname(),
+                        user.getLastname(),
+                        user.getEmail(),
+                        user.getRole(),
+                        user.isEnabled()
+                ))
+                .collect(Collectors.toList());
     }
 }

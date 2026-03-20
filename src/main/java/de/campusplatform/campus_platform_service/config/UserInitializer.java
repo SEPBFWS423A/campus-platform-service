@@ -1,8 +1,8 @@
 package de.campusplatform.campus_platform_service.config;
 
 import de.campusplatform.campus_platform_service.model.Role;
-import de.campusplatform.campus_platform_service.model.User;
-import de.campusplatform.campus_platform_service.repository.UserRepository;
+import de.campusplatform.campus_platform_service.model.AppUser;
+import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 import org.jspecify.annotations.NonNull;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,7 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 @Component
 public class UserInitializer implements CommandLineRunner {
-    private final UserRepository userRepository;
+    private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${app.initial.admin.email:}")
@@ -38,7 +38,7 @@ public class UserInitializer implements CommandLineRunner {
     @Value("${app.defaults.brightness}")
     private String defaultBrightness;
 
-    public UserInitializer(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserInitializer(AppUserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -60,7 +60,7 @@ public class UserInitializer implements CommandLineRunner {
     }
 
     public void createAdminUser() {
-        User admin = new User();
+        AppUser admin = new AppUser();
         admin.setEmail(initialAdminEmail);
         admin.setPassword(passwordEncoder.encode(initialAdminPassword));
         admin.setFirstname("Admin");
@@ -79,7 +79,7 @@ public class UserInitializer implements CommandLineRunner {
     }
 
     public void createLecturerUser() {
-        User lecturer = new User();
+        AppUser lecturer = new AppUser();
         lecturer.setEmail(initialLecturerEmail);
         lecturer.setPassword(passwordEncoder.encode(initialLecturerPassword));
         lecturer.setFirstname("Lecturer");
@@ -98,7 +98,7 @@ public class UserInitializer implements CommandLineRunner {
     }
 
     public void createStudentUser() {
-        User student = new User();
+        AppUser student = new AppUser();
         student.setEmail(initialStudentEmail);
         student.setPassword(passwordEncoder.encode(initialStudentPassword));
         student.setFirstname("Student");

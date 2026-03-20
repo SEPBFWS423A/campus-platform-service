@@ -1,6 +1,6 @@
 package de.campusplatform.campus_platform_service.security;
 
-import de.campusplatform.campus_platform_service.model.User;
+import de.campusplatform.campus_platform_service.model.AppUser;
 import lombok.NonNull;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -9,23 +9,23 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.Collections;
 
-public record CustomUserDetails(@NonNull User user) implements UserDetails {
+public record CustomUserDetails(@NonNull AppUser appUser) implements UserDetails {
 
     @Override
     @NonNull
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()));
+        return Collections.singletonList(new SimpleGrantedAuthority(appUser.getRole().name()));
     }
 
     @Override
     public String getPassword() {
-        return user.getPassword();
+        return appUser.getPassword();
     }
 
     @Override
     @NonNull
     public String getUsername() {
-        return user.getEmail();
+        return appUser.getEmail();
     }
 
     @Override
@@ -45,6 +45,6 @@ public record CustomUserDetails(@NonNull User user) implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return user.isEnabled();
+        return appUser.isEnabled();
     }
 }
