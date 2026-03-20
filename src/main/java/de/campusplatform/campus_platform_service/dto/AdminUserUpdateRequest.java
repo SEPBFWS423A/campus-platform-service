@@ -6,7 +6,6 @@ public record AdminUserUpdateRequest(
         String firstname,
         String lastname,
         String email,
-        Role role,
-        Boolean enabled
+        Role role
 ) {
 }

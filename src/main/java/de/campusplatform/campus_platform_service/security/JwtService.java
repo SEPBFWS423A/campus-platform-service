@@ -1,6 +1,6 @@
 package de.campusplatform.campus_platform_service.security;
 
-import de.campusplatform.campus_platform_service.model.User;
+import de.campusplatform.campus_platform_service.model.AppUser;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -30,7 +30,7 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    public String generateToken(User user) {
+    public String generateToken(AppUser user) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("id", user.getId());
         claims.put("role", user.getRole());

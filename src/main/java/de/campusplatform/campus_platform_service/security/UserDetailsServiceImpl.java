@@ -1,7 +1,7 @@
 package de.campusplatform.campus_platform_service.security;
 
-import de.campusplatform.campus_platform_service.model.User;
-import de.campusplatform.campus_platform_service.repository.UserRepository;
+import de.campusplatform.campus_platform_service.model.AppUser;
+import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 import lombok.NonNull;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -11,16 +11,16 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-    private final UserRepository userRepository;
+    private final AppUserRepository userRepository;
 
-    public UserDetailsServiceImpl(UserRepository userRepository) {
+    public UserDetailsServiceImpl(AppUserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
     @Override
     @NonNull
     public UserDetails loadUserByUsername(@NonNull String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
+        AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
         return new CustomUserDetails(user);

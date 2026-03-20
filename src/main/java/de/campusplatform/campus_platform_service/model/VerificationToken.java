@@ -20,13 +20,13 @@ public class VerificationToken {
 
     private String token;
 
-    @OneToOne(targetEntity = User.class, fetch = FetchType.EAGER)
+    @OneToOne(targetEntity = AppUser.class, fetch = FetchType.EAGER)
     @JoinColumn(nullable = false, name = "user_id")
-    private User user;
+    private AppUser user;
 
     private Date expiryDate;
 
-    public VerificationToken(String token, User user) {
+    public VerificationToken(String token, AppUser user) {
         this.token = token;
         this.user = user;
         this.expiryDate = calculateExpiryDate();

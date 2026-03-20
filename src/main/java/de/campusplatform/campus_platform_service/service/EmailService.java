@@ -5,7 +5,7 @@ import com.resend.core.exception.ResendException;
 import com.resend.services.emails.model.CreateEmailOptions;
 import com.resend.services.emails.model.CreateEmailResponse;
 import de.campusplatform.campus_platform_service.model.Invitation;
-import de.campusplatform.campus_platform_service.model.User;
+import de.campusplatform.campus_platform_service.model.AppUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +26,7 @@ public class EmailService {
     @Value("${app.resend.api.key}")
     private String resendApiKey;
 
-    public void sendPasswordResetEmail(User user, String token) {
+    public void sendPasswordResetEmail(AppUser user, String token) {
         String url = frontendUrl + "/reset-password?token=" + token;
         String subject = "Reset your Campus Platform Password";
         String body = "<h1>Reset your Password</h1><p>Click the link below to reset your password:</p><a href=\"" + url + "\">Reset Password</a>";
