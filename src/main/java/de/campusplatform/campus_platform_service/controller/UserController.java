@@ -6,12 +6,14 @@ import de.campusplatform.campus_platform_service.dto.UserPreferencesRequest;
 import de.campusplatform.campus_platform_service.dto.UserProfileResponse;
 import de.campusplatform.campus_platform_service.service.AuthService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/users")
+@PreAuthorize("isAuthenticated()")
 public class UserController {
 
     private final AuthService authService;
