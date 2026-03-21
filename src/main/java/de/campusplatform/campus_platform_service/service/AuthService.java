@@ -5,6 +5,7 @@ import de.campusplatform.campus_platform_service.exception.AppException;
 import de.campusplatform.campus_platform_service.model.Invitation;
 import de.campusplatform.campus_platform_service.model.InvitationStatus;
 import de.campusplatform.campus_platform_service.model.AppUser;
+import de.campusplatform.campus_platform_service.model.Role;
 import de.campusplatform.campus_platform_service.model.VerificationToken;
 import de.campusplatform.campus_platform_service.repository.InvitationRepository;
 import de.campusplatform.campus_platform_service.repository.AppUserRepository;
@@ -193,5 +194,18 @@ public class AuthService {
                         user.isEnabled()
                 ))
                 .collect(Collectors.toList());
+    }
+
+    public void deleteUser(Long id) {
+        AppUser user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException("error.user.notFound"));
+        userRepository.delete(user);
+    }
+
+    public UserStatsResponse getUserStats() {
+        long total = userRepository.count();
+        long staff = userRepository.countByRoleIn(List.of(Role.ADMIN, Role.LECTURER));
+        long students = userRepository.countByRoleIn(List.of(Role.STUDENT));
+        return new UserStatsResponse(total, staff, students);
     }
 }
