@@ -8,6 +8,11 @@ public record AdminUserResponse(
         String lastname,
         String email,
         Role role,
-        boolean enabled
+        boolean enabled,
+        String studentNumber,
+        Integer startYear,
+        Long focusId,
+        String focusName,
+        String courseOfStudyName
 ) {
 }

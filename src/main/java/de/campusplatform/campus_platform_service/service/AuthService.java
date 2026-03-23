@@ -9,9 +9,12 @@ import de.campusplatform.campus_platform_service.model.Role;
 import de.campusplatform.campus_platform_service.model.VerificationToken;
 import de.campusplatform.campus_platform_service.repository.InvitationRepository;
 import de.campusplatform.campus_platform_service.repository.AppUserRepository;
+import de.campusplatform.campus_platform_service.repository.FocusRepository;
+import de.campusplatform.campus_platform_service.repository.StudentProfileRepository;
 import de.campusplatform.campus_platform_service.repository.VerificationTokenRepository;
 import de.campusplatform.campus_platform_service.security.CustomUserDetails;
 import de.campusplatform.campus_platform_service.security.JwtService;
+import de.campusplatform.campus_platform_service.model.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,6 +31,8 @@ import java.util.stream.Collectors;
 @Service
 public class AuthService {
     private final AppUserRepository userRepository;
+    private final StudentProfileRepository studentProfileRepository;
+    private final FocusRepository focusRepository;
     private final VerificationTokenRepository tokenRepository;
     private final InvitationRepository invitationRepository;
     private final PasswordEncoder passwordEncoder;
@@ -41,8 +46,18 @@ public class AuthService {
     @Value("${app.defaults.brightness}")
     private String defaultBrightness;
 
-    public AuthService(AppUserRepository userRepository, VerificationTokenRepository tokenRepository, InvitationRepository invitationRepository, PasswordEncoder passwordEncoder, EmailService emailService, AuthenticationManager authenticationManager, JwtService jwtService) {
+    public AuthService(AppUserRepository userRepository, 
+                       StudentProfileRepository studentProfileRepository,
+                       FocusRepository focusRepository,
+                       VerificationTokenRepository tokenRepository, 
+                       InvitationRepository invitationRepository, 
+                       PasswordEncoder passwordEncoder, 
+                       EmailService emailService, 
+                       AuthenticationManager authenticationManager, 
+                       JwtService jwtService) {
         this.userRepository = userRepository;
+        this.studentProfileRepository = studentProfileRepository;
+        this.focusRepository = focusRepository;
         this.tokenRepository = tokenRepository;
         this.invitationRepository = invitationRepository;
         this.passwordEncoder = passwordEncoder;
@@ -74,7 +89,22 @@ public class AuthService {
         user.setEnabled(true);
         user.setTheme(defaultTheme);
         user.setBrightness(defaultBrightness);
-        userRepository.save(user);
+        AppUser savedUser = userRepository.save(user);
+
+        if (invitation.getRole() == Role.STUDENT) {
+            StudentProfile profile = new StudentProfile();
+            profile.setAppUser(savedUser);
+            profile.setUserId(savedUser.getId());
+            profile.setStudentNumber(request.getStudentNumber());
+            profile.setStartYear(request.getStartYear());
+            if (request.getFocusId() != null) {
+                Focus focus = focusRepository.findById(request.getFocusId())
+                        .orElseThrow(() -> new AppException("error.focus.notFound"));
+                profile.setFocus(focus);
+            }
+            studentProfileRepository.save(profile);
+            savedUser.setStudentProfile(profile);
+        }
 
         invitation.setStatus(InvitationStatus.COMPLETED);
         invitationRepository.save(invitation);
@@ -95,7 +125,21 @@ public class AuthService {
     public UserProfileResponse getUserProfile(String username) {
         AppUser user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new AppException("error.user.notFound"));
-        return new UserProfileResponse(user.getId(), user.getEmail(), user.getFirstname(), user.getLastname(), user.getRole(), user.getTheme(), user.getBrightness());
+        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getEmail(), user.getFirstname(), user.getLastname(), user.getRole(), user.getTheme(), user.getBrightness());
+        
+        if (user.getRole() == Role.STUDENT && user.getStudentProfile() != null) {
+            StudentProfile profile = user.getStudentProfile();
+            response.setStudentNumber(profile.getStudentNumber());
+            response.setStartYear(profile.getStartYear());
+            if (profile.getFocus() != null) {
+                response.setFocusId(profile.getFocus().getId());
+                response.setFocusName(profile.getFocus().getName());
+                if (profile.getFocus().getCourseOfStudy() != null) {
+                    response.setCourseOfStudyName(profile.getFocus().getCourseOfStudy().getName());
+                }
+            }
+        }
+        return response;
     }
 
     public void updatePersonalDetails(String username, PersonalDetailsRequest request) {
@@ -110,6 +154,21 @@ public class AuthService {
         }
         if (StringUtils.hasText(request.getEmail())) {
             user.setEmail(request.getEmail());
+        }
+
+        if (user.getRole() == Role.STUDENT && user.getStudentProfile() != null) {
+            StudentProfile profile = user.getStudentProfile();
+            if (StringUtils.hasText(request.getStudentNumber())) {
+                profile.setStudentNumber(request.getStudentNumber());
+            }
+            if (request.getStartYear() != null) {
+                profile.setStartYear(request.getStartYear());
+            }
+            if (request.getFocusId() != null) {
+                Focus focus = focusRepository.findById(request.getFocusId())
+                        .orElseThrow(() -> new AppException("error.focus.notFound"));
+                profile.setFocus(focus);
+            }
         }
 
         userRepository.save(user);
@@ -130,6 +189,21 @@ public class AuthService {
         }
         if (request.role() != null) {
             user.setRole(request.role());
+        }
+
+        if (user.getRole() == Role.STUDENT && user.getStudentProfile() != null) {
+            StudentProfile profile = user.getStudentProfile();
+            if (StringUtils.hasText(request.studentNumber())) {
+                profile.setStudentNumber(request.studentNumber());
+            }
+            if (request.startYear() != null) {
+                profile.setStartYear(request.startYear());
+            }
+            if (request.focusId() != null) {
+                Focus focus = focusRepository.findById(request.focusId())
+                        .orElseThrow(() -> new AppException("error.focus.notFound"));
+                profile.setFocus(focus);
+            }
         }
 
         userRepository.save(user);
@@ -185,14 +259,40 @@ public class AuthService {
 
     public List<AdminUserResponse> getAllUsers() {
         return userRepository.findAll().stream()
-                .map(user -> new AdminUserResponse(
-                        user.getId(),
-                        user.getFirstname(),
-                        user.getLastname(),
-                        user.getEmail(),
-                        user.getRole(),
-                        user.isEnabled()
-                ))
+                .map(user -> {
+                    String studentNumber = null;
+                    Integer startYear = null;
+                    Long focusId = null;
+                    String focusName = null;
+                    String courseName = null;
+
+                    if (user.getRole() == Role.STUDENT && user.getStudentProfile() != null) {
+                        StudentProfile profile = user.getStudentProfile();
+                        studentNumber = profile.getStudentNumber();
+                        startYear = profile.getStartYear();
+                        if (profile.getFocus() != null) {
+                            focusId = profile.getFocus().getId();
+                            focusName = profile.getFocus().getName();
+                            if (profile.getFocus().getCourseOfStudy() != null) {
+                                courseName = profile.getFocus().getCourseOfStudy().getName();
+                            }
+                        }
+                    }
+
+                    return new AdminUserResponse(
+                            user.getId(),
+                            user.getFirstname(),
+                            user.getLastname(),
+                            user.getEmail(),
+                            user.getRole(),
+                            user.isEnabled(),
+                            studentNumber,
+                            startYear,
+                            focusId,
+                            focusName,
+                            courseName
+                    );
+                })
                 .collect(Collectors.toList());
     }
 
