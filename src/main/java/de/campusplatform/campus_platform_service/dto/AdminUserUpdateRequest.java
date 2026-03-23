@@ -6,6 +6,9 @@ public record AdminUserUpdateRequest(
         String firstname,
         String lastname,
         String email,
-        Role role
+        Role role,
+        String studentNumber,
+        Integer startYear,
+        Long focusId
 ) {
 }
