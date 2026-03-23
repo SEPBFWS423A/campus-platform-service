@@ -8,4 +8,9 @@ public class CompleteRegistrationRequest {
     private String firstname;
     private String lastname;
     private String password;
+
+    // Student profile details (only used if role is student)
+    private String studentNumber;
+    private Integer startYear;
+    private Long focusId;
 }
