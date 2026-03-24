@@ -18,8 +18,10 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String lastname;
-    private String firstname;
+    private String salutation;
+    private String title;
+    private String lastName;
+    private String firstName;
     private String email;
     private String password;
 
