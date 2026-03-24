@@ -29,8 +29,8 @@ public class StudentProfile {
     private Integer startYear;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "focus_id")
-    private Focus focus;
+    @JoinColumn(name = "specialization_id")
+    private Specialization specialization;
 
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<StudyGroupMembership> memberships;

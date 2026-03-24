@@ -4,12 +4,12 @@ import lombok.Data;
 
 @Data
 public class PersonalDetailsRequest {
-    private String firstname;
-    private String lastname;
+    private String firstName;
+    private String lastName;
     private String email;
 
     // Student fields
     private String studentNumber;
     private Integer startYear;
-    private Long focusId;
+    private Long specializationId;
 }
