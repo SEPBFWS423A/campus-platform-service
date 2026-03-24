@@ -6,10 +6,12 @@ import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 import org.jspecify.annotations.NonNull;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Value;
 
 @Component
+@Order(1)
 public class UserInitializer implements CommandLineRunner {
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -45,74 +47,69 @@ public class UserInitializer implements CommandLineRunner {
 
     @Override
     public void run(String @NonNull ... args) {
-        if(userRepository.count() == 0) {
-            if (!initialAdminEmail.isEmpty() && !initialAdminPassword.isEmpty()) {
-                createAdminUser();
-            }
-            if (!initialLecturerEmail.isEmpty() && !initialLecturerPassword.isEmpty()) {
-                createLecturerUser();
-            }
-            if (!initialStudentEmail.isEmpty() && !initialStudentPassword.isEmpty()) {
-                createStudentUser();
-            }
+        boolean created = false;
+        if (!initialAdminEmail.isEmpty() && !initialAdminPassword.isEmpty() && 
+                userRepository.findByEmail(initialAdminEmail).isEmpty()) {
+            createAdminUser();
+            created = true;
+        }
+        if (!initialLecturerEmail.isEmpty() && !initialLecturerPassword.isEmpty() && 
+                userRepository.findByEmail(initialLecturerEmail).isEmpty()) {
+            createLecturerUser();
+            created = true;
+        }
+        if (!initialStudentEmail.isEmpty() && !initialStudentPassword.isEmpty() && 
+                userRepository.findByEmail(initialStudentEmail).isEmpty()) {
+            createStudentUser();
+            created = true;
         }
 
+        if (created) {
+            System.out.println("=================================================================");
+            System.out.println("   ✓ CORE SYSTEM USERS INITIALIZED");
+            System.out.println("   Admin:    " + initialAdminEmail);
+            System.out.println("   Lecturer: " + initialLecturerEmail);
+            System.out.println("   Student:  " + initialStudentEmail);
+            System.out.println("=================================================================");
+        }
     }
 
     public void createAdminUser() {
         AppUser admin = new AppUser();
         admin.setEmail(initialAdminEmail);
         admin.setPassword(passwordEncoder.encode(initialAdminPassword));
-        admin.setFirstname("Admin");
-        admin.setLastname("User");
+        admin.setFirstName("Admin");
+        admin.setLastName("User");
         admin.setRole(Role.ADMIN);
         admin.setEnabled(true);
         admin.setTheme(defaultTheme);
         admin.setBrightness(defaultBrightness);
         userRepository.save(admin);
-
-        System.out.println("=================================================================");
-        System.out.println("INITIAL ADMIN USER CREATED");
-        System.out.println("Email: " + initialAdminEmail);
-        System.out.println("Password: [PROVIDED EXTERNALLY]");
-        System.out.println("=================================================================");
     }
 
     public void createLecturerUser() {
         AppUser lecturer = new AppUser();
         lecturer.setEmail(initialLecturerEmail);
         lecturer.setPassword(passwordEncoder.encode(initialLecturerPassword));
-        lecturer.setFirstname("Lecturer");
-        lecturer.setLastname("User");
+        lecturer.setFirstName("Lecturer");
+        lecturer.setLastName("User");
         lecturer.setRole(Role.LECTURER);
         lecturer.setEnabled(true);
         lecturer.setTheme(defaultTheme);
         lecturer.setBrightness(defaultBrightness);
         userRepository.save(lecturer);
-
-        System.out.println("=================================================================");
-        System.out.println("INITIAL Lecturer USER CREATED");
-        System.out.println("Email: " + initialLecturerEmail);
-        System.out.println("Password: [PROVIDED EXTERNALLY]");
-        System.out.println("=================================================================");
     }
 
     public void createStudentUser() {
         AppUser student = new AppUser();
         student.setEmail(initialStudentEmail);
         student.setPassword(passwordEncoder.encode(initialStudentPassword));
-        student.setFirstname("Student");
-        student.setLastname("User");
+        student.setFirstName("Student");
+        student.setLastName("User");
         student.setRole(Role.STUDENT);
         student.setEnabled(true);
         student.setTheme(defaultTheme);
         student.setBrightness(defaultBrightness);
         userRepository.save(student);
-
-        System.out.println("=================================================================");
-        System.out.println("INITIAL Student USER CREATED");
-        System.out.println("Email: " + initialStudentEmail);
-        System.out.println("Password: [PROVIDED EXTERNALLY]");
-        System.out.println("=================================================================");
     }
 }

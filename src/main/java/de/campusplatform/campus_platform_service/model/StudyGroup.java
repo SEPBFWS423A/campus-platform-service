@@ -22,6 +22,6 @@ public class StudyGroup {
     private Set<StudyGroupMembership> memberships;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "focus_id")
-    private Focus focus;
+    @JoinColumn(name = "specialization_id")
+    private Specialization specialization;
 }
