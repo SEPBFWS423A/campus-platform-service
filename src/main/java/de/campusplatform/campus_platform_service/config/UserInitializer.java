@@ -1,18 +1,24 @@
 package de.campusplatform.campus_platform_service.config;
 
-import de.campusplatform.campus_platform_service.model.Role;
-import de.campusplatform.campus_platform_service.model.AppUser;
-import de.campusplatform.campus_platform_service.repository.AppUserRepository;
+import java.util.List;
+
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.beans.factory.annotation.Value;
+
+import de.campusplatform.campus_platform_service.model.AppUser;
+import de.campusplatform.campus_platform_service.model.Role;
+import de.campusplatform.campus_platform_service.model.Room;
+import de.campusplatform.campus_platform_service.repository.AppUserRepository;
+import de.campusplatform.campus_platform_service.repository.RoomRepository;
 
 @Component
 public class UserInitializer implements CommandLineRunner {
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RoomRepository roomRepository;
 
     @Value("${app.initial.admin.email:}")
     private String initialAdminEmail;
@@ -38,9 +44,10 @@ public class UserInitializer implements CommandLineRunner {
     @Value("${app.defaults.brightness}")
     private String defaultBrightness;
 
-    public UserInitializer(AppUserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserInitializer(AppUserRepository userRepository, PasswordEncoder passwordEncoder, RoomRepository roomRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.roomRepository = roomRepository;
     }
 
     @Override
@@ -57,6 +64,27 @@ public class UserInitializer implements CommandLineRunner {
             }
         }
 
+        if (roomRepository.count() == 0) {
+            createInitialRooms();
+        }
+    }
+
+    private void createInitialRooms() {
+        roomRepository.saveAll(List.of(
+            Room.builder().name("B-D01").seats(40).examSeats(25).build(),
+            Room.builder().name("B-D02").seats(30).examSeats(25).build(),
+            Room.builder().name("B-D03").seats(40).examSeats(25).build(),
+            Room.builder().name("B-D04").seats(40).examSeats(25).build(),
+            Room.builder().name("B-D05").seats(40).examSeats(25).build(),
+            Room.builder().name("B-D06").seats(30).examSeats(25).build(),
+            Room.builder().name("B-D07").seats(40).examSeats(25).build(),
+            Room.builder().name("B-D08").seats(40).examSeats(25).build(),
+            Room.builder().name("B-D09").seats(40).examSeats(25).build(),
+            Room.builder().name("B-D10").seats(40).examSeats(25).build()
+        ));
+        System.out.println("=================================================================");
+        System.out.println("INITIAL ROOMS CREATED");
+        System.out.println("=================================================================");
     }
 
     public void createAdminUser() {
