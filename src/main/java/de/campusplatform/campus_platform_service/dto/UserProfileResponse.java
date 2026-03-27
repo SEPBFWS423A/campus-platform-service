@@ -14,6 +14,7 @@ public class UserProfileResponse {
     private Role role;
     private String theme;
     private String brightness;
+    private String language;
 
     // Student extension details (nullable)
     private String studentNumber;
@@ -22,7 +23,7 @@ public class UserProfileResponse {
     private String specializationName;
     private String courseOfStudyName;
 
-    public UserProfileResponse(Long id, String email, String firstName, String lastName, Role role, String theme, String brightness) {
+    public UserProfileResponse(Long id, String email, String firstName, String lastName, Role role, String theme, String brightness, String language) {
         this.id = id;
         this.email = email;
         this.firstName = firstName;
@@ -30,6 +31,7 @@ public class UserProfileResponse {
         this.role = role;
         this.theme = theme;
         this.brightness = brightness;
+        this.language = language;
     }
 
 }

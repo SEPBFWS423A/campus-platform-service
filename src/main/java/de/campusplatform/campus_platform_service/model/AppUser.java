@@ -32,6 +32,7 @@ public class AppUser {
 
     private String theme;
     private String brightness;
+    private String language;
 
     @OneToOne(mappedBy = "appUser", cascade = CascadeType.ALL, orphanRemoval = true)
     private StudentProfile studentProfile;
