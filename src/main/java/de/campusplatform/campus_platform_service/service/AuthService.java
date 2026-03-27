@@ -137,7 +137,7 @@ public class AuthService {
     public UserProfileResponse getUserProfile(String username) {
         AppUser user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new AppException("error.user.notFound"));
-        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getEmail(), user.getFirstName(), user.getLastName(), user.getRole(), user.getTheme(), user.getBrightness());
+        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getEmail(), user.getFirstName(), user.getLastName(), user.getRole(), user.getTheme(), user.getBrightness(), user.getLanguage());
         
         if (user.getRole() == Role.STUDENT && user.getStudentProfile() != null) {
             StudentProfile profile = user.getStudentProfile();
@@ -230,6 +230,9 @@ public class AuthService {
         }
         if (StringUtils.hasText(request.getBrightness())) {
             user.setBrightness(request.getBrightness());
+        }
+        if (StringUtils.hasText(request.getLanguage())) {
+            user.setLanguage(request.getLanguage());
         }
 
         userRepository.save(user);
