@@ -1,14 +1,15 @@
 package de.campusplatform.campus_platform_service.config;
 
-import de.campusplatform.campus_platform_service.model.Role;
-import de.campusplatform.campus_platform_service.model.AppUser;
-import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
-import org.springframework.beans.factory.annotation.Value;
+
+import de.campusplatform.campus_platform_service.model.AppUser;
+import de.campusplatform.campus_platform_service.model.Role;
+import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 
 @Component
 @Order(1)

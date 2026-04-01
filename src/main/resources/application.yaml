@@ -35,7 +35,7 @@ app:
       email:
       password:
   defaults:
-    theme: theme-green
+    theme: theme-azure
     brightness: light
   resend:
     api:

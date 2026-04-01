@@ -3,6 +3,8 @@ package de.campusplatform.campus_platform_service.controller;
 import de.campusplatform.campus_platform_service.dto.*;
 import de.campusplatform.campus_platform_service.model.ExamType;
 import de.campusplatform.campus_platform_service.repository.ExamTypeRepository;
+import de.campusplatform.campus_platform_service.model.Room;
+import de.campusplatform.campus_platform_service.repository.RoomRepository;
 import de.campusplatform.campus_platform_service.service.AuthService;
 import de.campusplatform.campus_platform_service.service.ModuleService;
 import de.campusplatform.campus_platform_service.service.StudyGroupService;
@@ -24,6 +26,7 @@ import java.util.List;
 public class AdminController {
 
     private final AuthService authService;
+    private final RoomRepository roomRepository;        
     private final StudyGroupService studyGroupService;
     private final ModuleService moduleService;
     private final CourseOfStudyRepository courseOfStudyRepository;
@@ -32,6 +35,7 @@ public class AdminController {
     private final ExamTypeRepository examTypeRepository;
 
     public AdminController(AuthService authService, 
+                           RoomRepository roomRepository,
                            StudyGroupService studyGroupService, 
                            ModuleService moduleService,
                            CourseOfStudyRepository courseOfStudyRepository,
@@ -39,6 +43,7 @@ public class AdminController {
                            InstitutionRepository institutionRepository,
                            ExamTypeRepository examTypeRepository) {
         this.authService = authService;
+        this.roomRepository = roomRepository;
         this.studyGroupService = studyGroupService;
         this.moduleService = moduleService;
         this.courseOfStudyRepository = courseOfStudyRepository;
@@ -81,6 +86,28 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/rooms")
+    public ResponseEntity<Room> createRoom(@RequestBody Room room) {
+        return ResponseEntity.ok(roomRepository.save(room));
+    }
+
+    @PutMapping("/rooms/{id}")
+    public ResponseEntity<Room> updateRoom(@PathVariable Long id, @RequestBody Room updated) {
+        return roomRepository.findById(id).map(room -> {
+            room.setName(updated.getName());
+            room.setSeats(updated.getSeats());
+            room.setExamSeats(updated.getExamSeats());
+            return ResponseEntity.ok(roomRepository.save(room));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/rooms/{id}")
+    public ResponseEntity<Void> deleteRoom(@PathVariable Long id) {
+        if (!roomRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        roomRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     // Study Groups
     @GetMapping("/groups")
     public ResponseEntity<List<AdminGroupResponse>> getAllGroups() {
