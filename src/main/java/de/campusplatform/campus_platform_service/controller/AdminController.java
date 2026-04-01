@@ -86,6 +86,11 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/rooms")
+    public ResponseEntity<List<Room>> getAllRooms() {
+        return ResponseEntity.ok(roomRepository.findAll());
+    }
+
     @PostMapping("/rooms")
     public ResponseEntity<Room> createRoom(@RequestBody Room room) {
         return ResponseEntity.ok(roomRepository.save(room));
@@ -108,6 +113,8 @@ public class AdminController {
         }
         roomRepository.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
     // Study Groups
     @GetMapping("/groups")
     public ResponseEntity<List<AdminGroupResponse>> getAllGroups() {
