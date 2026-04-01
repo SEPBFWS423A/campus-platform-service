@@ -25,6 +25,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -80,9 +81,39 @@ public class AuthService {
         user.setBrightness(defaultBrightness);
         userRepository.save(user);
 
-        Invitation invitation = new Invitation(request.getEmail(), request.getRole());
+        String studentId = null;
+        if (request.getRole() == Role.STUDENT) {
+            if (StringUtils.hasText(request.getStudentNumber())) {
+                studentId = request.getStudentNumber();
+            } else {
+                studentId = generateNextStudentNumber();
+            }
+        }
+
+        Invitation invitation = new Invitation(request.getEmail(), request.getRole(), studentId);
         invitationRepository.save(invitation);
         emailService.sendInvitationEmail(invitation);
+    }
+
+    private synchronized String generateNextStudentNumber() {
+        Optional<String> maxFromProfile = studentProfileRepository.findMaxStudentNumber();
+        Optional<String> maxFromInvitation = invitationRepository.findMaxStudentNumber();
+        
+        long maxNum = 100000; // Base starting point
+        
+        if (maxFromProfile.isPresent()) {
+            try {
+                maxNum = Math.max(maxNum, Long.parseLong(maxFromProfile.get()));
+            } catch (NumberFormatException ignored) {}
+        }
+        
+        if (maxFromInvitation.isPresent()) {
+            try {
+                maxNum = Math.max(maxNum, Long.parseLong(maxFromInvitation.get()));
+            } catch (NumberFormatException ignored) {}
+        }
+        
+        return String.format("%06d", maxNum + 1);
     }
 
     public void completeRegistration(CompleteRegistrationRequest request) {
@@ -107,7 +138,12 @@ public class AuthService {
                     .orElse(new StudentProfile());
             profile.setAppUser(savedUser);
             profile.setUserId(savedUser.getId());
-            profile.setStudentNumber(request.getStudentNumber());
+            
+            // Prefer the pre-assigned student number from invitation, override with request only if provided
+            String studentNum = StringUtils.hasText(invitation.getStudentNumber()) ? 
+                               invitation.getStudentNumber() : request.getStudentNumber();
+            profile.setStudentNumber(studentNum);
+            
             profile.setStartYear(request.getStartYear());
             if (request.getSpecializationId() != null) {
                 Specialization specialization = specializationRepository.findById(request.getSpecializationId())

@@ -7,4 +7,5 @@ import lombok.Data;
 public class InvitationRequest {
     private String email;
     private Role role;
+    private String studentNumber;
 }
