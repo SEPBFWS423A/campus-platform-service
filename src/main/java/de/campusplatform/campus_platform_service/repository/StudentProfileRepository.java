@@ -10,4 +10,7 @@ import java.util.Optional;
 public interface StudentProfileRepository extends JpaRepository<StudentProfile, Long> {
     Optional<StudentProfile> findByStudentNumber(String studentNumber);
     Optional<StudentProfile> findByUserId(Long userId);
+    
+    @org.springframework.data.jpa.repository.Query("SELECT MAX(s.studentNumber) FROM StudentProfile s")
+    Optional<String> findMaxStudentNumber();
 }
