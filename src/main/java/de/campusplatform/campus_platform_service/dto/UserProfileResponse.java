@@ -9,27 +9,29 @@ import lombok.Setter;
 public class UserProfileResponse {
     private Long id;
     private String email;
-    private String firstname;
-    private String lastname;
+    private String firstName;
+    private String lastName;
     private Role role;
     private String theme;
     private String brightness;
+    private String language;
 
     // Student extension details (nullable)
     private String studentNumber;
     private Integer startYear;
-    private Long focusId;
-    private String focusName;
+    private Long specializationId;
+    private String specializationName;
     private String courseOfStudyName;
 
-    public UserProfileResponse(Long id, String email, String firstname, String lastname, Role role, String theme, String brightness) {
+    public UserProfileResponse(Long id, String email, String firstName, String lastName, Role role, String theme, String brightness, String language) {
         this.id = id;
         this.email = email;
-        this.firstname = firstname;
-        this.lastname = lastname;
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.role = role;
         this.theme = theme;
         this.brightness = brightness;
+        this.language = language;
     }
 
 }

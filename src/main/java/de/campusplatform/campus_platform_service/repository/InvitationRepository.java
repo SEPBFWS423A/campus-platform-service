@@ -7,4 +7,7 @@ import java.util.Optional;
 
 public interface InvitationRepository extends JpaRepository<Invitation, Long> {
     Optional<Invitation> findByToken(String token);
+
+    @org.springframework.data.jpa.repository.Query("SELECT MAX(i.studentNumber) FROM Invitation i")
+    Optional<String> findMaxStudentNumber();
 }

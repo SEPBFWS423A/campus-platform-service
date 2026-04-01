@@ -11,15 +11,21 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "course_of_study")
+@Table(name = "course_of_study", uniqueConstraints = @UniqueConstraint(columnNames = {"name", "degree_type"}))
 public class CourseOfStudy {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
+    private DegreeType degreeType;
+
     @OneToMany(mappedBy = "courseOfStudy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Focus> focuses;
+    private Set<Specialization> specializations;
+
+    @OneToMany(mappedBy = "courseOfStudy", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Module> modules;
 }

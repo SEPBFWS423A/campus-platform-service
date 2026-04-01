@@ -9,7 +9,7 @@ import de.campusplatform.campus_platform_service.model.Role;
 import de.campusplatform.campus_platform_service.model.VerificationToken;
 import de.campusplatform.campus_platform_service.repository.InvitationRepository;
 import de.campusplatform.campus_platform_service.repository.AppUserRepository;
-import de.campusplatform.campus_platform_service.repository.FocusRepository;
+import de.campusplatform.campus_platform_service.repository.SpecializationRepository;
 import de.campusplatform.campus_platform_service.repository.StudentProfileRepository;
 import de.campusplatform.campus_platform_service.repository.VerificationTokenRepository;
 import de.campusplatform.campus_platform_service.security.CustomUserDetails;
@@ -25,6 +25,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -32,7 +33,7 @@ import java.util.stream.Collectors;
 public class AuthService {
     private final AppUserRepository userRepository;
     private final StudentProfileRepository studentProfileRepository;
-    private final FocusRepository focusRepository;
+    private final SpecializationRepository specializationRepository;
     private final VerificationTokenRepository tokenRepository;
     private final InvitationRepository invitationRepository;
     private final PasswordEncoder passwordEncoder;
@@ -48,7 +49,7 @@ public class AuthService {
 
     public AuthService(AppUserRepository userRepository, 
                        StudentProfileRepository studentProfileRepository,
-                       FocusRepository focusRepository,
+                       SpecializationRepository specializationRepository,
                        VerificationTokenRepository tokenRepository, 
                        InvitationRepository invitationRepository, 
                        PasswordEncoder passwordEncoder, 
@@ -57,7 +58,7 @@ public class AuthService {
                        JwtService jwtService) {
         this.userRepository = userRepository;
         this.studentProfileRepository = studentProfileRepository;
-        this.focusRepository = focusRepository;
+        this.specializationRepository = specializationRepository;
         this.tokenRepository = tokenRepository;
         this.invitationRepository = invitationRepository;
         this.passwordEncoder = passwordEncoder;
@@ -67,9 +68,52 @@ public class AuthService {
     }
 
     public void inviteUser(InvitationRequest request) {
-        Invitation invitation = new Invitation(request.getEmail(), request.getRole());
+        // Create user record with enabled: false
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new AppException("error.user.alreadyExists");
+        }
+
+        AppUser user = new AppUser();
+        user.setEmail(request.getEmail());
+        user.setRole(request.getRole());
+        user.setEnabled(false);
+        user.setTheme(defaultTheme);
+        user.setBrightness(defaultBrightness);
+        userRepository.save(user);
+
+        String studentId = null;
+        if (request.getRole() == Role.STUDENT) {
+            if (StringUtils.hasText(request.getStudentNumber())) {
+                studentId = request.getStudentNumber();
+            } else {
+                studentId = generateNextStudentNumber();
+            }
+        }
+
+        Invitation invitation = new Invitation(request.getEmail(), request.getRole(), studentId);
         invitationRepository.save(invitation);
         emailService.sendInvitationEmail(invitation);
+    }
+
+    private synchronized String generateNextStudentNumber() {
+        Optional<String> maxFromProfile = studentProfileRepository.findMaxStudentNumber();
+        Optional<String> maxFromInvitation = invitationRepository.findMaxStudentNumber();
+        
+        long maxNum = 100000; // Base starting point
+        
+        if (maxFromProfile.isPresent()) {
+            try {
+                maxNum = Math.max(maxNum, Long.parseLong(maxFromProfile.get()));
+            } catch (NumberFormatException ignored) {}
+        }
+        
+        if (maxFromInvitation.isPresent()) {
+            try {
+                maxNum = Math.max(maxNum, Long.parseLong(maxFromInvitation.get()));
+            } catch (NumberFormatException ignored) {}
+        }
+        
+        return String.format("%06d", maxNum + 1);
     }
 
     public void completeRegistration(CompleteRegistrationRequest request) {
@@ -80,27 +124,31 @@ public class AuthService {
             throw new AppException("error.invitation.alreadyCompleted");
         }
 
-        AppUser user = new AppUser();
-        user.setFirstname(request.getFirstname());
-        user.setLastname(request.getLastname());
-        user.setEmail(invitation.getEmail());
-        user.setRole(invitation.getRole());
+        AppUser user = userRepository.findByEmail(invitation.getEmail())
+                .orElseThrow(() -> new AppException("error.user.notFound"));
+
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEnabled(true);
-        user.setTheme(defaultTheme);
-        user.setBrightness(defaultBrightness);
         AppUser savedUser = userRepository.save(user);
 
         if (invitation.getRole() == Role.STUDENT) {
-            StudentProfile profile = new StudentProfile();
+            StudentProfile profile = studentProfileRepository.findByUserId(savedUser.getId())
+                    .orElse(new StudentProfile());
             profile.setAppUser(savedUser);
             profile.setUserId(savedUser.getId());
-            profile.setStudentNumber(request.getStudentNumber());
+            
+            // Prefer the pre-assigned student number from invitation, override with request only if provided
+            String studentNum = StringUtils.hasText(invitation.getStudentNumber()) ? 
+                               invitation.getStudentNumber() : request.getStudentNumber();
+            profile.setStudentNumber(studentNum);
+            
             profile.setStartYear(request.getStartYear());
-            if (request.getFocusId() != null) {
-                Focus focus = focusRepository.findById(request.getFocusId())
-                        .orElseThrow(() -> new AppException("error.focus.notFound"));
-                profile.setFocus(focus);
+            if (request.getSpecializationId() != null) {
+                Specialization specialization = specializationRepository.findById(request.getSpecializationId())
+                        .orElseThrow(() -> new AppException("error.specialization.notFound"));
+                profile.setSpecialization(specialization);
             }
             studentProfileRepository.save(profile);
             savedUser.setStudentProfile(profile);
@@ -125,17 +173,17 @@ public class AuthService {
     public UserProfileResponse getUserProfile(String username) {
         AppUser user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new AppException("error.user.notFound"));
-        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getEmail(), user.getFirstname(), user.getLastname(), user.getRole(), user.getTheme(), user.getBrightness());
+        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getEmail(), user.getFirstName(), user.getLastName(), user.getRole(), user.getTheme(), user.getBrightness(), user.getLanguage());
         
         if (user.getRole() == Role.STUDENT && user.getStudentProfile() != null) {
             StudentProfile profile = user.getStudentProfile();
             response.setStudentNumber(profile.getStudentNumber());
             response.setStartYear(profile.getStartYear());
-            if (profile.getFocus() != null) {
-                response.setFocusId(profile.getFocus().getId());
-                response.setFocusName(profile.getFocus().getName());
-                if (profile.getFocus().getCourseOfStudy() != null) {
-                    response.setCourseOfStudyName(profile.getFocus().getCourseOfStudy().getName());
+            if (profile.getSpecialization() != null) {
+                response.setSpecializationId(profile.getSpecialization().getId());
+                response.setSpecializationName(profile.getSpecialization().getName());
+                if (profile.getSpecialization().getCourseOfStudy() != null) {
+                    response.setCourseOfStudyName(profile.getSpecialization().getCourseOfStudy().getName());
                 }
             }
         }
@@ -146,11 +194,11 @@ public class AuthService {
         AppUser user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new AppException("error.user.notFound"));
 
-        if (StringUtils.hasText(request.getFirstname())) {
-            user.setFirstname(request.getFirstname());
+        if (StringUtils.hasText(request.getFirstName())) {
+            user.setFirstName(request.getFirstName());
         }
-        if (StringUtils.hasText(request.getLastname())) {
-            user.setLastname(request.getLastname());
+        if (StringUtils.hasText(request.getLastName())) {
+            user.setLastName(request.getLastName());
         }
         if (StringUtils.hasText(request.getEmail())) {
             user.setEmail(request.getEmail());
@@ -164,10 +212,10 @@ public class AuthService {
             if (request.getStartYear() != null) {
                 profile.setStartYear(request.getStartYear());
             }
-            if (request.getFocusId() != null) {
-                Focus focus = focusRepository.findById(request.getFocusId())
-                        .orElseThrow(() -> new AppException("error.focus.notFound"));
-                profile.setFocus(focus);
+            if (request.getSpecializationId() != null) {
+                Specialization specialization = specializationRepository.findById(request.getSpecializationId())
+                        .orElseThrow(() -> new AppException("error.specialization.notFound"));
+                profile.setSpecialization(specialization);
             }
         }
 
@@ -178,11 +226,11 @@ public class AuthService {
         AppUser user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException("error.user.notFound"));
 
-        if (StringUtils.hasText(request.firstname())) {
-            user.setFirstname(request.firstname());
+        if (StringUtils.hasText(request.firstName())) {
+            user.setFirstName(request.firstName());
         }
-        if (StringUtils.hasText(request.lastname())) {
-            user.setLastname(request.lastname());
+        if (StringUtils.hasText(request.lastName())) {
+            user.setLastName(request.lastName());
         }
         if (StringUtils.hasText(request.email())) {
             user.setEmail(request.email());
@@ -199,10 +247,10 @@ public class AuthService {
             if (request.startYear() != null) {
                 profile.setStartYear(request.startYear());
             }
-            if (request.focusId() != null) {
-                Focus focus = focusRepository.findById(request.focusId())
-                        .orElseThrow(() -> new AppException("error.focus.notFound"));
-                profile.setFocus(focus);
+            if (request.specializationId() != null) {
+                Specialization specialization = specializationRepository.findById(request.specializationId())
+                        .orElseThrow(() -> new AppException("error.specialization.notFound"));
+                profile.setSpecialization(specialization);
             }
         }
 
@@ -218,6 +266,9 @@ public class AuthService {
         }
         if (StringUtils.hasText(request.getBrightness())) {
             user.setBrightness(request.getBrightness());
+        }
+        if (StringUtils.hasText(request.getLanguage())) {
+            user.setLanguage(request.getLanguage());
         }
 
         userRepository.save(user);
@@ -262,35 +313,37 @@ public class AuthService {
                 .map(user -> {
                     String studentNumber = null;
                     Integer startYear = null;
-                    Long focusId = null;
-                    String focusName = null;
-                    String courseName = null;
+                    Long specializationId = null;
+                    String specializationName = null;
+                    String courseOfStudyName = null;
 
                     if (user.getRole() == Role.STUDENT && user.getStudentProfile() != null) {
                         StudentProfile profile = user.getStudentProfile();
                         studentNumber = profile.getStudentNumber();
                         startYear = profile.getStartYear();
-                        if (profile.getFocus() != null) {
-                            focusId = profile.getFocus().getId();
-                            focusName = profile.getFocus().getName();
-                            if (profile.getFocus().getCourseOfStudy() != null) {
-                                courseName = profile.getFocus().getCourseOfStudy().getName();
+                        if (profile.getSpecialization() != null) {
+                            specializationId = profile.getSpecialization().getId();
+                            specializationName = profile.getSpecialization().getName();
+                            if (profile.getSpecialization().getCourseOfStudy() != null) {
+                                courseOfStudyName = profile.getSpecialization().getCourseOfStudy().getName();
                             }
                         }
                     }
 
                     return new AdminUserResponse(
                             user.getId(),
-                            user.getFirstname(),
-                            user.getLastname(),
+                            user.getSalutation(),
+                            user.getTitle(),
+                            user.getFirstName(),
+                            user.getLastName(),
                             user.getEmail(),
                             user.getRole(),
                             user.isEnabled(),
                             studentNumber,
                             startYear,
-                            focusId,
-                            focusName,
-                            courseName
+                            specializationId,
+                            specializationName,
+                            courseOfStudyName
                     );
                 })
                 .collect(Collectors.toList());

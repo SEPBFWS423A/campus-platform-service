@@ -1,9 +1,10 @@
 package de.campusplatform.campus_platform_service.service;
 
+import de.campusplatform.campus_platform_service.dto.AdminGroupResponse;
+import de.campusplatform.campus_platform_service.dto.StudyGroupRequest;
 import de.campusplatform.campus_platform_service.exception.AppException;
-import de.campusplatform.campus_platform_service.model.StudentProfile;
-import de.campusplatform.campus_platform_service.model.StudyGroup;
-import de.campusplatform.campus_platform_service.model.StudyGroupMembership;
+import de.campusplatform.campus_platform_service.model.*;
+import de.campusplatform.campus_platform_service.repository.SpecializationRepository;
 import de.campusplatform.campus_platform_service.repository.StudentProfileRepository;
 import de.campusplatform.campus_platform_service.repository.StudyGroupMembershipRepository;
 import de.campusplatform.campus_platform_service.repository.StudyGroupRepository;
@@ -11,7 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +23,7 @@ public class StudyGroupService {
     private final StudentProfileRepository studentProfileRepository;
     private final StudyGroupRepository studyGroupRepository;
     private final StudyGroupMembershipRepository membershipRepository;
+    private final SpecializationRepository specializationRepository;
 
     /**
      * Requirement 3: Business Logic & Validation Rules
@@ -42,11 +46,11 @@ public class StudyGroupService {
         StudyGroup studyGroup = studyGroupRepository.findById(groupId)
                 .orElseThrow(() -> new AppException("STUDY_GROUP_NOT_FOUND"));
 
-        // 3. Focus Matching
-        // Condition: IF StudyGroup.focus_id == StudentProfile.focus_id, proceed.
-        if (!Objects.equals(student.getFocus().getId(), studyGroup.getFocus().getId())) {
+        // 3. Specialization Matching
+        // Condition: IF StudyGroup.specialization_id == StudentProfile.specialization_id, proceed.
+        if (!Objects.equals(student.getSpecialization().getId(), studyGroup.getSpecialization().getId())) {
             // Exception: ELSE, throw a validation error
-            throw new AppException("STUDENT_FOCUS_MISMATCH");
+            throw new AppException("STUDENT_SPECIALIZATION_MISMATCH");
         }
 
         // Prevent duplicate membership
@@ -61,5 +65,61 @@ public class StudyGroupService {
                 .build();
 
         return membershipRepository.save(membership);
+    }
+
+    @Transactional
+    public void removeStudentFromGroup(Long userId, Long groupId) {
+        StudentProfile student = studentProfileRepository.findById(userId)
+                .orElseThrow(() -> new AppException("USER_NOT_STUDENT"));
+
+        StudyGroup studyGroup = studyGroupRepository.findById(groupId)
+                .orElseThrow(() -> new AppException("STUDY_GROUP_NOT_FOUND"));
+
+        StudyGroupMembership membership = membershipRepository.findByStudentAndStudyGroup(student, studyGroup)
+                .orElseThrow(() -> new AppException("NOT_A_MEMBER"));
+
+        membershipRepository.delete(membership);
+    }
+
+    public List<AdminGroupResponse> getAllGroupsForAdmin() {
+        return studyGroupRepository.findAll().stream()
+                .map(group -> {
+                    List<AdminGroupResponse.GroupMemberDTO> members = group.getMemberships().stream()
+                            .map(m -> new AdminGroupResponse.GroupMemberDTO(
+                                    m.getStudent().getAppUser().getId(),
+                                    m.getStudent().getStudentNumber(),
+                                    m.getStudent().getAppUser().getTitle(),
+                                    m.getStudent().getAppUser().getFirstName(),
+                                    m.getStudent().getAppUser().getLastName()
+                            ))
+                            .collect(Collectors.toList());
+
+                    return new AdminGroupResponse(
+                            group.getId(),
+                            group.getName(),
+                            group.getSpecialization().getCourseOfStudy().getName(),
+                            group.getSpecialization().getName(),
+                            members.size(),
+                            members
+                    );
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void createGroup(StudyGroupRequest request) {
+        if (studyGroupRepository.findByName(request.name()).isPresent()) {
+            throw new AppException("error.group.alreadyExists");
+        }
+
+        Specialization specialization = specializationRepository.findById(request.specializationId())
+                .orElseThrow(() -> new AppException("error.specialization.notFound"));
+
+        StudyGroup group = StudyGroup.builder()
+                .name(request.name())
+                .specialization(specialization)
+                .build();
+
+        studyGroupRepository.save(group);
     }
 }

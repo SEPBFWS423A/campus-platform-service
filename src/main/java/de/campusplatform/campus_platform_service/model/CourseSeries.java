@@ -29,7 +29,8 @@ public class CourseSeries {
     @Enumerated(EnumType.STRING)
     private CourseStatus status;
 
-    @Enumerated(EnumType.STRING)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "selected_exam_type_id")
     private ExamType selectedExamType;
 
     private String examFileUrl;
