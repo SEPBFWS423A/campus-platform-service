@@ -20,14 +20,16 @@ public class Invitation {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    private String studentNumber;
     private String token;
 
     @Enumerated(EnumType.STRING)
     private InvitationStatus status;
 
-    public Invitation(String email, Role role) {
+    public Invitation(String email, Role role, String studentNumber) {
         this.email = email;
         this.role = role;
+        this.studentNumber = studentNumber;
         this.token = UUID.randomUUID().toString();
         this.status = InvitationStatus.PENDING;
     }
