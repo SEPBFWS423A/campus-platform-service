@@ -83,14 +83,6 @@ Die zentrale Verbindung zwischen einem **Studenten** (`AppUser`) und einer `Cour
 
 ## 6. Datenmodell-Übersicht (UML)
 
-![Architektur-Diagramm](campus_platform_architecture.png)
-
-### Was im Bild besonders übersichtlich ist:
-- **Die Hierarchie:** Von oben nach unten (Uni-Struktur -> Studiengang -> Modul -> Kursreihe -> Event).
-- **Die Benutzer-Erweiterung:** Links siehst du den `AppUser` mit seinem `StudentProfile`.
-- **Die Verknüpfungen:** Die zentralen Knotenpunkte wie `StudentCourseSubmission` (welches Student und Kursreihe verbindet) sind klar hervorgehoben.
-- **Die Infrastruktur:** Räume, Abwesenheiten und administrative Entitäten sind logisch gruppiert.
-
 ```mermaid
 classDiagram
     direction TB
