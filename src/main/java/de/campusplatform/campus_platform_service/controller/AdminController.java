@@ -190,11 +190,6 @@ public class AdminController {
     }
 
     // Institution Information
-    @GetMapping("/institution")
-    public ResponseEntity<InstitutionInfo> getInstitutionInfo() {
-        return ResponseEntity.ok(institutionRepository.getFirst().orElse(new InstitutionInfo()));
-    }
-
     @PutMapping("/institution")
     public ResponseEntity<InstitutionInfo> updateInstitutionInfo(@RequestBody InstitutionInfo info) {
         InstitutionInfo current = institutionRepository.getFirst().orElse(new InstitutionInfo());
