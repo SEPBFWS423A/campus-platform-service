@@ -42,4 +42,12 @@ public class CourseSeries {
 
     @OneToMany(mappedBy = "courseSeries", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<StudentCourseSubmission> studentSubmissions;
+
+    @ManyToMany
+    @JoinTable(
+        name = "course_series_study_group",
+        joinColumns = @JoinColumn(name = "course_series_id"),
+        inverseJoinColumns = @JoinColumn(name = "study_group_id")
+    )
+    private Set<StudyGroup> studyGroups = new java.util.HashSet<>();
 }

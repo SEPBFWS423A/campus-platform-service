@@ -97,7 +97,9 @@ public class StudyGroupService {
                     return new AdminGroupResponse(
                             group.getId(),
                             group.getName(),
+                            group.getSpecialization().getCourseOfStudy().getId(),
                             group.getSpecialization().getCourseOfStudy().getName(),
+                            group.getSpecialization().getId(),
                             group.getSpecialization().getName(),
                             members.size(),
                             members

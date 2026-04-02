@@ -27,6 +27,9 @@ public class DataInitializer implements CommandLineRunner {
     private final StudyGroupMembershipRepository membershipRepository;
     private final ModuleRepository moduleRepository;
     private final InstitutionRepository institutionRepository;
+    private final CourseSeriesRepository courseSeriesRepository;
+    private final RoomRepository roomRepository;
+    private final EventRepository eventRepository;
 
     @Override
     @Transactional
@@ -124,12 +127,70 @@ public class DataInitializer implements CommandLineRunner {
                 createStudentsForGroup(g3, 10, 3000);
             }
 
+            // --- Course Series Demo Data ---
+            if (courseSeriesRepository.count() == 0) {
+                java.util.List<StudyGroup> allGroups = studyGroupRepository.findAll();
+                StudyGroup mockG1 = allGroups.stream().filter(g -> g.getName().equals("BFWS424A")).findFirst().orElse(null);
+                StudyGroup mockG2 = allGroups.stream().filter(g -> g.getName().equals("BFWI424A")).findFirst().orElse(null);
+
+                CourseSeries cs1 = CourseSeries.builder()
+                        .module(prog1)
+                        .assignedLecturer(a)
+                        .status(CourseStatus.ACTIVE)
+                        .selectedExamType(kl)
+                        .submissionStartDate(LocalDateTime.now().minusDays(10))
+                        .submissionDeadline(LocalDateTime.now().plusDays(20))
+                        .studyGroups(mockG1 != null ? java.util.Set.of(mockG1) : new java.util.HashSet<>())
+                        .build();
+
+                CourseSeries cs2 = CourseSeries.builder()
+                        .module(seProject)
+                        .assignedLecturer(p)
+                        .status(CourseStatus.PLANNED)
+                        .selectedExamType(rf)
+                        .submissionStartDate(LocalDateTime.now().plusDays(30))
+                        .submissionDeadline(LocalDateTime.now().plusDays(60))
+                        .studyGroups(mockG2 != null ? java.util.Set.of(mockG2) : new java.util.HashSet<>())
+                        .build();
+
+                CourseSeries cs3 = CourseSeries.builder()
+                        .module(prog1)
+                        .assignedLecturer(a)
+                        .status(CourseStatus.COMPLETED)
+                        .selectedExamType(kl)
+                        .submissionStartDate(LocalDateTime.now().minusDays(90))
+                        .submissionDeadline(LocalDateTime.now().minusDays(30))
+                        .studyGroups(mockG1 != null && mockG2 != null ? java.util.Set.of(mockG1, mockG2) : new java.util.HashSet<>())
+                        .build();
+
+                List<CourseSeries> savedSeries = courseSeriesRepository.saveAll(List.of(cs1, cs2, cs3));
+
+                // Create Demo Events using existing rooms
+                List<Room> rooms = roomRepository.findAll();
+                if (!rooms.isEmpty()) {
+                    for (CourseSeries series : savedSeries) {
+                        for (int i = 0; i < 10; i++) {
+                            Room room = rooms.get(i % rooms.size());
+                            eventRepository.save(Event.builder()
+                                .courseSeries(series)
+                                .room(room)
+                                .name(series.getModule().getName() + " - Termin " + (i + 1))
+                                .eventType(EventType.LEHRVERANSTALTUNG)
+                                .startTime(series.getSubmissionStartDate().plusWeeks(i).withHour(Math.min(8 + i, 18)).withMinute(0))
+                                .durationMinutes(90)
+                                .build());
+                        }
+                    }
+                }
+            }
+
             System.out.println("=================================================================");
             System.out.println("   ✓ CAMPUS PLATFORM DATA INITIALIZED");
             System.out.println("   Institution:     " + glCampus.getUniversityName() + " (" + glCampus.getCity() + ")");
             System.out.println("   Website:         https://gl.campusplatform.de");
             System.out.println("   Exam Types:      " + examTypeRepository.count());
             System.out.println("   Courses:         " + courseOfStudyRepository.count());
+            System.out.println("   Course Series:   " + courseSeriesRepository.count());
             System.out.println("   Mock Students:   40");
             System.out.println("   Study Groups:    " + studyGroupRepository.count() + " (Aligned with Frontend Logic)");
             System.out.println("=================================================================");
