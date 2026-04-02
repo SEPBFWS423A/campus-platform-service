@@ -1,14 +1,12 @@
 package de.campusplatform.campus_platform_service.controller;
 
-import de.campusplatform.campus_platform_service.dto.ChangePasswordRequest;
-import de.campusplatform.campus_platform_service.dto.PersonalDetailsRequest;
-import de.campusplatform.campus_platform_service.dto.UserPreferencesRequest;
-import de.campusplatform.campus_platform_service.dto.UserProfileResponse;
+import de.campusplatform.campus_platform_service.dto.*;
 import de.campusplatform.campus_platform_service.model.InstitutionInfo;
 import de.campusplatform.campus_platform_service.model.Room;
 import de.campusplatform.campus_platform_service.repository.InstitutionRepository;
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
 import de.campusplatform.campus_platform_service.service.AuthService;
+import de.campusplatform.campus_platform_service.service.FaqService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,11 +23,15 @@ public class UserController {
     private final AuthService authService;
     private final RoomRepository roomRepository;
     private final InstitutionRepository institutionRepository;
+    private final FaqService faqService;
 
-    public UserController(AuthService authService, RoomRepository roomRepository, InstitutionRepository institutionRepository) {
+
+
+    public UserController(AuthService authService, RoomRepository roomRepository, InstitutionRepository institutionRepository, FaqService faqService) {
         this.authService = authService;
         this.roomRepository = roomRepository;
         this.institutionRepository = institutionRepository;
+        this.faqService = faqService;
     }
 
     @GetMapping("/institution")
@@ -76,5 +78,12 @@ public class UserController {
     ) {
         authService.changePassword(userDetails.getUsername(), request);
         return ResponseEntity.ok().build();
+    }
+
+
+    //Gehört in eigenen Contrller, hier weil nicht fertig
+    @GetMapping("/faqs")
+    public List<FaqResponse> getVisibleFaqs() {
+        return faqService.getVisibleFaqs();
     }
 }
