@@ -6,6 +6,7 @@ import de.campusplatform.campus_platform_service.repository.ExamTypeRepository;
 import de.campusplatform.campus_platform_service.model.Room;
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
 import de.campusplatform.campus_platform_service.service.AuthService;
+import de.campusplatform.campus_platform_service.service.CourseSeriesService;
 import de.campusplatform.campus_platform_service.service.ModuleService;
 import de.campusplatform.campus_platform_service.service.StudyGroupService;
 import de.campusplatform.campus_platform_service.repository.InstitutionRepository;
@@ -33,6 +34,7 @@ public class AdminController {
     private final SpecializationRepository specializationRepository;
     private final InstitutionRepository institutionRepository;
     private final ExamTypeRepository examTypeRepository;
+    private final CourseSeriesService courseSeriesService;
 
     public AdminController(AuthService authService, 
                            RoomRepository roomRepository,
@@ -41,7 +43,8 @@ public class AdminController {
                            CourseOfStudyRepository courseOfStudyRepository,
                            SpecializationRepository specializationRepository,
                            InstitutionRepository institutionRepository,
-                           ExamTypeRepository examTypeRepository) {
+                           ExamTypeRepository examTypeRepository,
+                           CourseSeriesService courseSeriesService) {
         this.authService = authService;
         this.roomRepository = roomRepository;
         this.studyGroupService = studyGroupService;
@@ -50,6 +53,7 @@ public class AdminController {
         this.specializationRepository = specializationRepository;
         this.institutionRepository = institutionRepository;
         this.examTypeRepository = examTypeRepository;
+        this.courseSeriesService = courseSeriesService;
     }
 
     @PostMapping("/invitations")
@@ -253,6 +257,28 @@ public class AdminController {
     @DeleteMapping("/modules/{id}")
     public ResponseEntity<Void> deleteModule(@PathVariable Long id) {
         moduleService.deleteModule(id);
+        return ResponseEntity.ok().build();
+    }
+
+    // Course Series
+    @GetMapping("/course-series")
+    public ResponseEntity<List<AdminCourseSeriesResponse>> getAllCourseSeries() {
+        return ResponseEntity.ok(courseSeriesService.getAllCourseSeries());
+    }
+
+    @PostMapping("/course-series")
+    public ResponseEntity<AdminCourseSeriesResponse> createCourseSeries(@RequestBody CourseSeriesRequest request) {
+        return ResponseEntity.ok(courseSeriesService.createCourseSeries(request));
+    }
+
+    @PutMapping("/course-series/{id}")
+    public ResponseEntity<AdminCourseSeriesResponse> updateCourseSeries(@PathVariable Long id, @RequestBody CourseSeriesRequest request) {
+        return ResponseEntity.ok(courseSeriesService.updateCourseSeries(id, request));
+    }
+
+    @DeleteMapping("/course-series/{id}")
+    public ResponseEntity<Void> deleteCourseSeries(@PathVariable Long id) {
+        courseSeriesService.deleteCourseSeries(id);
         return ResponseEntity.ok().build();
     }
 }

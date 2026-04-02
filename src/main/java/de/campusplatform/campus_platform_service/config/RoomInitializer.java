@@ -4,11 +4,13 @@ import de.campusplatform.campus_platform_service.model.Room;
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
 import org.jspecify.annotations.NonNull;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
+@Order(1)
 public class RoomInitializer implements CommandLineRunner {
 
     private final RoomRepository roomRepository;

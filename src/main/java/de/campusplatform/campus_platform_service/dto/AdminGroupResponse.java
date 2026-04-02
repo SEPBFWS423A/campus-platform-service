@@ -5,7 +5,9 @@ import java.util.List;
 public record AdminGroupResponse(
         Long id,
         String name,
+        Long courseOfStudyId,
         String courseOfStudyName,
+        Long specializationId,
         String specialization,
         int memberCount,
         List<GroupMemberDTO> members
