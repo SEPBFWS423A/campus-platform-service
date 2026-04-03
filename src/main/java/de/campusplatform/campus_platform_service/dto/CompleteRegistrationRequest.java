@@ -5,6 +5,8 @@ import lombok.Data;
 @Data
 public class CompleteRegistrationRequest {
     private String token;
+    private String salutation;
+    private String title;
     private String firstName;
     private String lastName;
     private String password;
