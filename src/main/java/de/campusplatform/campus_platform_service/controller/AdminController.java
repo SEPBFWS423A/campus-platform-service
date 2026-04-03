@@ -171,6 +171,15 @@ public class AdminController {
         return ResponseEntity.ok(new AdminCourseResponse(saved.getId(), saved.getName(), saved.getDegreeType()));
     }
 
+    @PutMapping("/courses/{id}")
+    public ResponseEntity<AdminCourseResponse> updateCourse(@PathVariable Long id, @RequestBody CourseRequest request) {
+        CourseOfStudy current = courseOfStudyRepository.findById(id).orElseThrow();
+        current.setName(request.name());
+        current.setDegreeType(request.degreeType());
+        CourseOfStudy saved = courseOfStudyRepository.save(current);
+        return ResponseEntity.ok(new AdminCourseResponse(saved.getId(), saved.getName(), saved.getDegreeType()));
+    }
+
     @DeleteMapping("/courses/{id}")
     public ResponseEntity<Void> deleteCourse(@PathVariable Long id) {
         try {
@@ -199,6 +208,18 @@ public class AdminController {
                 .courseOfStudy(cos)
                 .build();
         Specialization saved = specializationRepository.save(s);
+        return ResponseEntity.ok(new AdminSpecializationResponse(saved.getId(), saved.getName(), saved.getCourseOfStudy().getId()));
+    }
+
+    @PutMapping("/specializations/{id}")
+    public ResponseEntity<AdminSpecializationResponse> updateSpecialization(@PathVariable Long id, @RequestBody SpecializationRequest request) {
+        Specialization current = specializationRepository.findById(id).orElseThrow();
+        current.setName(request.name());
+        if (request.courseId() != null) {
+            CourseOfStudy cos = courseOfStudyRepository.findById(request.courseId()).orElseThrow();
+            current.setCourseOfStudy(cos);
+        }
+        Specialization saved = specializationRepository.save(current);
         return ResponseEntity.ok(new AdminSpecializationResponse(saved.getId(), saved.getName(), saved.getCourseOfStudy().getId()));
     }
 
