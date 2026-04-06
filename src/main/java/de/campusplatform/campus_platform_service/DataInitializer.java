@@ -27,6 +27,7 @@ public class DataInitializer implements CommandLineRunner {
     private final StudyGroupMembershipRepository membershipRepository;
     private final ModuleRepository moduleRepository;
     private final InstitutionRepository institutionRepository;
+    private final FaqRepository faqRepository;
 
     @Override
     @Transactional
@@ -124,6 +125,8 @@ public class DataInitializer implements CommandLineRunner {
                 createStudentsForGroup(g3, 10, 3000);
             }
 
+            createFaqs();
+
             System.out.println("=================================================================");
             System.out.println("   ✓ CAMPUS PLATFORM DATA INITIALIZED");
             System.out.println("   Institution:     " + glCampus.getUniversityName() + " (" + glCampus.getCity() + ")");
@@ -132,6 +135,7 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("   Courses:         " + courseOfStudyRepository.count());
             System.out.println("   Mock Students:   40");
             System.out.println("   Study Groups:    " + studyGroupRepository.count() + " (Aligned with Frontend Logic)");
+            System.out.println("   FAQs:            " + faqRepository.count());
             System.out.println("=================================================================");
         }
     }
@@ -190,5 +194,67 @@ public class DataInitializer implements CommandLineRunner {
         for (String name : names) {
             specializationRepository.save(Specialization.builder().name(name).courseOfStudy(course).build());
         }
+    }
+
+    private void createFaqs() {
+        if (faqRepository.count() > 0) {
+            return;
+        }
+
+        faqRepository.save(Faq.builder()
+                .question("Wie kann ich mein Passwort zurücksetzen?")
+                .answer("Nutzen Sie auf der Login-Seite die Funktion \"Passwort vergessen\". Anschließend erhalten Sie per E-Mail einen Link zum Zurücksetzen Ihres Passworts.")
+                .category("Login & Sicherheit")
+                .sortOrder(1)
+                .published(true)
+                .build());
+
+        faqRepository.save(Faq.builder()
+                .question("Wo finde ich meinen Prüfungsplan?")
+                .answer("Ihren Prüfungsplan finden Sie im Bereich \"Prüfungen\". Dort werden alle freigegebenen Klausur- und Prüfungstermine angezeigt.")
+                .category("Prüfungen")
+                .sortOrder(2)
+                .published(true)
+                .build());
+
+        faqRepository.save(Faq.builder()
+                .question("Wo finde ich Dokumente und Formulare?")
+                .answer("Alle freigegebenen Dokumente und Formulare finden Sie im Bereich \"Downloads\".")
+                .category("Downloads")
+                .sortOrder(3)
+                .published(true)
+                .build());
+
+        faqRepository.save(Faq.builder()
+                .question("Wie kann ich die Hochschule kontaktieren?")
+                .answer("Die Kontaktinformationen der Hochschule und des Sekretariats finden Sie im Bereich \"Info\".")
+                .category("Kontakt")
+                .sortOrder(4)
+                .published(true)
+                .build());
+
+        faqRepository.save(Faq.builder()
+                .question("Kann ich meine Profildaten selbst ändern?")
+                .answer("Einige persönliche Daten können im Profilbereich geändert werden. Offizielle Stammdaten werden durch die Verwaltung gepflegt.")
+                .category("Benutzerkonto")
+                .sortOrder(5)
+                .published(true)
+                .build());
+
+        faqRepository.save(Faq.builder()
+                .question("Wann erscheinen neue FAQ-Einträge?")
+                .answer("Neue FAQ-Einträge werden nach redaktioneller Prüfung durch Administratoren veröffentlicht.")
+                .category("FAQ")
+                .sortOrder(6)
+                .published(false)
+                .build());
+
+        faqRepository.save(Faq.builder()
+                .question("Werden künftig weitere Self-Service-Funktionen ergänzt?")
+                .answer("Weitere Funktionen sind geplant, aber noch nicht für alle Nutzer freigeschaltet.")
+                .category("System")
+                .sortOrder(7)
+                .published(false)
+                .build());
     }
 }

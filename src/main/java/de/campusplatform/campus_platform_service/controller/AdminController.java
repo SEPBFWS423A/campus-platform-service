@@ -261,7 +261,7 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
-    //Gehört in eigenen Contrller, hier weil nicht fertig
+    //FAQ
     @GetMapping("/faqs")
     public List<FaqResponse> getAllFaqs() {
         return faqService.getAllFaqs();

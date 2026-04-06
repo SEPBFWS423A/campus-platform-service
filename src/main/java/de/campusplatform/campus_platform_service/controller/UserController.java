@@ -81,7 +81,7 @@ public class UserController {
     }
 
 
-    //Gehört in eigenen Contrller, hier weil nicht fertig
+    //FAQ
     @GetMapping("/faqs")
     public List<FaqResponse> getVisibleFaqs() {
         return faqService.getVisibleFaqs();
