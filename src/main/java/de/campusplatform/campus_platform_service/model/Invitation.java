@@ -22,14 +22,19 @@ public class Invitation {
 
     private String studentNumber;
     private String token;
+    
+    private Long specializationId;
+    private Integer startYear;
 
     @Enumerated(EnumType.STRING)
     private InvitationStatus status;
 
-    public Invitation(String email, Role role, String studentNumber) {
+    public Invitation(String email, Role role, String studentNumber, Long specializationId, Integer startYear) {
         this.email = email;
         this.role = role;
         this.studentNumber = studentNumber;
+        this.specializationId = specializationId;
+        this.startYear = startYear;
         this.token = UUID.randomUUID().toString();
         this.status = InvitationStatus.PENDING;
     }

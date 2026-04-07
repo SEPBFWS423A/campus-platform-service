@@ -25,11 +25,13 @@ public class VerificationToken {
     private AppUser user;
 
     private Date expiryDate;
+    private Date createdAt;
 
     public VerificationToken(String token, AppUser user) {
         this.token = token;
         this.user = user;
         this.expiryDate = calculateExpiryDate();
+        this.createdAt = new Date();
     }
 
     private Date calculateExpiryDate() {

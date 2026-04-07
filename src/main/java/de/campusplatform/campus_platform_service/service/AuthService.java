@@ -21,6 +21,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
@@ -79,6 +80,7 @@ public class AuthService {
         user.setEnabled(false);
         user.setTheme(defaultTheme);
         user.setBrightness(defaultBrightness);
+        user.setLanguage(request.getLanguage() != null ? request.getLanguage().toLowerCase() : "de");
         userRepository.save(user);
 
         String studentId = null;
@@ -90,9 +92,9 @@ public class AuthService {
             }
         }
 
-        Invitation invitation = new Invitation(request.getEmail(), request.getRole(), studentId);
+        Invitation invitation = new Invitation(request.getEmail(), request.getRole(), studentId, request.getSpecializationId(), request.getStartYear());
         invitationRepository.save(invitation);
-        emailService.sendInvitationEmail(invitation);
+        emailService.sendInvitationEmail(invitation, request.getLanguage());
     }
 
     private synchronized String generateNextStudentNumber() {
@@ -116,6 +118,7 @@ public class AuthService {
         return String.format("%06d", maxNum + 1);
     }
 
+    @Transactional
     public void completeRegistration(CompleteRegistrationRequest request) {
         Invitation invitation = invitationRepository.findByToken(request.getToken())
                 .orElseThrow(() -> new AppException("error.invitation.invalidToken"));
@@ -127,35 +130,46 @@ public class AuthService {
         AppUser user = userRepository.findByEmail(invitation.getEmail())
                 .orElseThrow(() -> new AppException("error.user.notFound"));
 
+        // Basic Info
         user.setSalutation(request.getSalutation());
         user.setTitle(request.getTitle());
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
+        user.setLanguage(user.getLanguage() != null ? user.getLanguage() : "de");
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEnabled(true);
-        AppUser savedUser = userRepository.save(user);
 
         if (invitation.getRole() == Role.STUDENT) {
-            StudentProfile profile = studentProfileRepository.findByUserId(savedUser.getId())
-                    .orElse(new StudentProfile());
-            profile.setAppUser(savedUser);
-            profile.setUserId(savedUser.getId());
+            // Find existing profile or create a new one
+            StudentProfile profile = user.getStudentProfile();
+            if (profile == null) {
+                profile = new StudentProfile();
+                profile.setAppUser(user);
+                user.setStudentProfile(profile);
+            }
             
-            // Prefer the pre-assigned student number from invitation, override with request only if provided
+            // Student ID (Studenten-Nr.)
             String studentNum = StringUtils.hasText(invitation.getStudentNumber()) ? 
-                               invitation.getStudentNumber() : request.getStudentNumber();
+                                invitation.getStudentNumber() : request.getStudentNumber();
             profile.setStudentNumber(studentNum);
             
-            profile.setStartYear(request.getStartYear());
-            if (request.getSpecializationId() != null) {
-                Specialization specialization = specializationRepository.findById(request.getSpecializationId())
+            // Start Year
+            Integer startYear = (invitation.getStartYear() != null) ? invitation.getStartYear() : request.getStartYear();
+            profile.setStartYear(startYear);
+            
+            // Specialization
+            Long specId = (invitation.getSpecializationId() != null) ? invitation.getSpecializationId() : request.getSpecializationId();
+            if (specId != null) {
+                Specialization specialization = specializationRepository.findById(specId)
                         .orElseThrow(() -> new AppException("error.specialization.notFound"));
                 profile.setSpecialization(specialization);
             }
-            studentProfileRepository.save(profile);
-            savedUser.setStudentProfile(profile);
         }
 
+        // Save User (This will cascade to the StudentProfile if it exists)
+        userRepository.save(user);
+
+        // Complete invitation
         invitation.setStatus(InvitationStatus.COMPLETED);
         invitationRepository.save(invitation);
     }
@@ -287,9 +301,25 @@ public class AuthService {
         userRepository.save(user);
     }
 
+    @Transactional
     public void sendPasswordResetToken(String email) {
         String normalizedEmail = email.trim().toLowerCase();
         userRepository.findByEmail(normalizedEmail).ifPresent(user -> {
+            Optional<VerificationToken> existingToken = tokenRepository.findByUserId(user.getId());
+            
+            if (existingToken.isPresent()) {
+                VerificationToken token = existingToken.get();
+                if (token.getCreatedAt() != null) {
+                    long diff = System.currentTimeMillis() - token.getCreatedAt().getTime();
+                    if (diff < 600000) { // 10 minutes
+                        // Silently ignore to prevent spam and not reveal timing patterns
+                        return;
+                    }
+                }
+                tokenRepository.delete(token);
+                tokenRepository.flush();
+            }
+
             String token = UUID.randomUUID().toString();
             createPasswordResetToken(user, token);
             emailService.sendPasswordResetEmail(user, token);

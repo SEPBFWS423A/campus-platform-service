@@ -6,11 +6,15 @@ import com.resend.services.emails.model.CreateEmailOptions;
 import com.resend.services.emails.model.CreateEmailResponse;
 import de.campusplatform.campus_platform_service.model.Invitation;
 import de.campusplatform.campus_platform_service.model.AppUser;
+import de.campusplatform.campus_platform_service.model.InstitutionInfo;
+import de.campusplatform.campus_platform_service.repository.InstitutionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 @Service
 public class EmailService {
@@ -26,18 +30,59 @@ public class EmailService {
     @Value("${app.resend.api.key}")
     private String resendApiKey;
 
+    private final InstitutionRepository institutionRepository;
+
+    public EmailService(InstitutionRepository institutionRepository) {
+        this.institutionRepository = institutionRepository;
+    }
+
     public void sendPasswordResetEmail(AppUser user, String token) {
-        String url = frontendUrl + "/reset-password?token=" + token;
-        String subject = "Reset your Campus Platform Password";
-        String body = "<h1>Reset your Password</h1><p>Click the link below to reset your password:</p><a href=\"" + url + "\">Reset Password</a>";
+        
+        InstitutionInfo info = institutionRepository.getFirst().orElseThrow(() -> new IllegalStateException("Institution Info not initialized"));
+        String lang = (user.getLanguage() != null ? user.getLanguage() : "de").toLowerCase();
+        
+        String subject;
+        String bodyTemplate;
+
+        if ("en".equals(lang)) {
+            subject = info.getPasswordResetEmailSubjectEn();
+            bodyTemplate = info.getPasswordResetEmailBodyEn();
+        } else {
+            subject = info.getPasswordResetEmailSubjectDe();
+            bodyTemplate = info.getPasswordResetEmailBodyDe();
+        }
+        
+        String url = normalizeUrl(frontendUrl) + "/reset-password?token=" + token;
+        
+        String body = bodyTemplate.replace("{url}", url);
         sendEmail(user.getEmail(), subject, body);
     }
 
-    public void sendInvitationEmail(Invitation invitation) {
-        String url = frontendUrl + "/complete-registration?token=" + invitation.getToken() + "&email=" + invitation.getEmail();
-        String subject = "You are invited to join the Campus Platform";
-        String body = "<h1>Invitation to Campus Platform</h1><p>Click the link below to complete your registration:</p><a href=\"" + url + "\">Complete Registration</a>";
+    public void sendInvitationEmail(Invitation invitation, String language) {
+        
+        InstitutionInfo info = institutionRepository.getFirst().orElseThrow(() -> new IllegalStateException("Institution Info not initialized"));
+        String lang = (language != null ? language : "de").toLowerCase();
+        
+        String subject;
+        String bodyTemplate;
+
+        if ("en".equals(lang)) {
+            subject = info.getInvitationEmailSubjectEn();
+            bodyTemplate = info.getInvitationEmailBodyEn();
+        } else {
+            subject = info.getInvitationEmailSubjectDe();
+            bodyTemplate = info.getInvitationEmailBodyDe();
+        }
+        
+        String url = normalizeUrl(frontendUrl) + "/complete-registration?token=" + invitation.getToken() + "&email=" + invitation.getEmail();
+        
+        String body = (bodyTemplate != null) ? bodyTemplate.replace("{url}", url) : url;
         sendEmail(invitation.getEmail(), subject, body);
+    }
+
+    private String normalizeUrl(String url) {
+        if (url == null) return "";
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
     @Async

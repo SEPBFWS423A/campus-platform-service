@@ -261,6 +261,14 @@ public class AdminController {
         current.setBibliothekUrl(info.getBibliothekUrl());
         current.setMensaUrl(info.getMensaUrl());
         current.setImpressum(info.getImpressum());
+        current.setInvitationEmailSubjectDe(info.getInvitationEmailSubjectDe());
+        current.setInvitationEmailBodyDe(info.getInvitationEmailBodyDe());
+        current.setInvitationEmailSubjectEn(info.getInvitationEmailSubjectEn());
+        current.setInvitationEmailBodyEn(info.getInvitationEmailBodyEn());
+        current.setPasswordResetEmailSubjectDe(info.getPasswordResetEmailSubjectDe());
+        current.setPasswordResetEmailBodyDe(info.getPasswordResetEmailBodyDe());
+        current.setPasswordResetEmailSubjectEn(info.getPasswordResetEmailSubjectEn());
+        current.setPasswordResetEmailBodyEn(info.getPasswordResetEmailBodyEn());
         return ResponseEntity.ok(institutionRepository.save(current));
     }
 
