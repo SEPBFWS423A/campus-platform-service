@@ -7,6 +7,7 @@ import de.campusplatform.campus_platform_service.model.Room;
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
 import de.campusplatform.campus_platform_service.service.AuthService;
 import de.campusplatform.campus_platform_service.service.CourseSeriesService;
+import de.campusplatform.campus_platform_service.service.EventService;
 import de.campusplatform.campus_platform_service.service.ModuleService;
 import de.campusplatform.campus_platform_service.service.StudyGroupService;
 import de.campusplatform.campus_platform_service.repository.InstitutionRepository;
@@ -19,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -35,6 +38,7 @@ public class AdminController {
     private final InstitutionRepository institutionRepository;
     private final ExamTypeRepository examTypeRepository;
     private final CourseSeriesService courseSeriesService;
+    private final EventService eventService;
 
     public AdminController(AuthService authService, 
                            RoomRepository roomRepository,
@@ -44,7 +48,8 @@ public class AdminController {
                            SpecializationRepository specializationRepository,
                            InstitutionRepository institutionRepository,
                            ExamTypeRepository examTypeRepository,
-                           CourseSeriesService courseSeriesService) {
+                           CourseSeriesService courseSeriesService,
+                           EventService eventService) {
         this.authService = authService;
         this.roomRepository = roomRepository;
         this.studyGroupService = studyGroupService;
@@ -54,6 +59,7 @@ public class AdminController {
         this.institutionRepository = institutionRepository;
         this.examTypeRepository = examTypeRepository;
         this.courseSeriesService = courseSeriesService;
+        this.eventService = eventService;
     }
 
     @PostMapping("/invitations")
@@ -93,6 +99,14 @@ public class AdminController {
     @GetMapping("/rooms")
     public ResponseEntity<List<Room>> getAllRooms() {
         return ResponseEntity.ok(roomRepository.findAll());
+    }
+
+    @GetMapping("/rooms/available")
+    public ResponseEntity<List<Room>> getAvailableRooms(
+            @RequestParam(required = false) LocalDateTime startTime,
+            @RequestParam(required = false) Integer durationMinutes,
+            @RequestParam(required = false) Long excludeEventId) {
+        return ResponseEntity.ok(eventService.getAvailableRooms(startTime, durationMinutes, excludeEventId));
     }
 
     @PostMapping("/rooms")
@@ -312,19 +326,46 @@ public class AdminController {
         return ResponseEntity.ok(courseSeriesService.getAllCourseSeries());
     }
 
+    @GetMapping("/course-series/{id}")
+    public ResponseEntity<AdminCourseSeriesResponse> getCourseSeriesById(@PathVariable Long id) {
+        return ResponseEntity.ok(courseSeriesService.getCourseSeriesById(id));
+    }
+
     @PostMapping("/course-series")
-    public ResponseEntity<AdminCourseSeriesResponse> createCourseSeries(@RequestBody CourseSeriesRequest request) {
+    public ResponseEntity<AdminCourseSeriesResponse> createCourseSeries(@Valid @RequestBody CourseSeriesRequest request) {
         return ResponseEntity.ok(courseSeriesService.createCourseSeries(request));
     }
 
     @PutMapping("/course-series/{id}")
-    public ResponseEntity<AdminCourseSeriesResponse> updateCourseSeries(@PathVariable Long id, @RequestBody CourseSeriesRequest request) {
+    public ResponseEntity<AdminCourseSeriesResponse> updateCourseSeries(@PathVariable Long id, @Valid @RequestBody CourseSeriesRequest request) {
         return ResponseEntity.ok(courseSeriesService.updateCourseSeries(id, request));
     }
 
     @DeleteMapping("/course-series/{id}")
     public ResponseEntity<Void> deleteCourseSeries(@PathVariable Long id) {
         courseSeriesService.deleteCourseSeries(id);
+        return ResponseEntity.ok().build();
+    }
+
+    // Events
+    @GetMapping("/course-series/{seriesId}/events")
+    public ResponseEntity<List<AdminEventResponse>> getEventsForSeries(@PathVariable Long seriesId) {
+        return ResponseEntity.ok(eventService.getEventsForSeries(seriesId));
+    }
+
+    @PostMapping("/course-series/{seriesId}/events")
+    public ResponseEntity<AdminEventResponse> createEvent(@PathVariable Long seriesId, @RequestBody EventRequest request) {
+        return ResponseEntity.ok(eventService.createEvent(seriesId, request));
+    }
+
+    @PutMapping("/events/{eventId}")
+    public ResponseEntity<AdminEventResponse> updateEvent(@PathVariable Long eventId, @RequestBody EventRequest request) {
+        return ResponseEntity.ok(eventService.updateEvent(eventId, request));
+    }
+
+    @DeleteMapping("/events/{eventId}")
+    public ResponseEntity<Void> deleteEvent(@PathVariable Long eventId) {
+        eventService.deleteEvent(eventId);
         return ResponseEntity.ok().build();
     }
 }

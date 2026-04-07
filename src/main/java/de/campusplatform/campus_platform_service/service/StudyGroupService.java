@@ -83,7 +83,28 @@ public class StudyGroupService {
 
     public List<AdminGroupResponse> getAllGroupsForAdmin() {
         return studyGroupRepository.findAll().stream()
-                .map(this::mapToResponse)
+                .map(group -> {
+                    List<AdminGroupResponse.GroupMemberDTO> members = group.getMemberships().stream()
+                            .map(m -> new AdminGroupResponse.GroupMemberDTO(
+                                    m.getStudent().getAppUser().getId(),
+                                    m.getStudent().getStudentNumber(),
+                                    m.getStudent().getAppUser().getTitle(),
+                                    m.getStudent().getAppUser().getFirstName(),
+                                    m.getStudent().getAppUser().getLastName()
+                            ))
+                            .collect(Collectors.toList());
+
+                    return new AdminGroupResponse(
+                            group.getId(),
+                            group.getName(),
+                            group.getSpecialization().getCourseOfStudy().getId(),
+                            group.getSpecialization().getCourseOfStudy().getName(),
+                            group.getSpecialization().getId(),
+                            group.getSpecialization().getName(),
+                            members.size(),
+                            members
+                    );
+                })
                 .collect(Collectors.toList());
     }
 
