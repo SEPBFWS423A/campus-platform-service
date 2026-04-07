@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
+@SuppressWarnings("JpaDataSourceORMInspection")
 @Entity
 @Table(name = "faq")
 @Getter
@@ -18,44 +21,36 @@ public class Faq {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 255)
-    private String question;
-
-    @Lob
-    @Column(nullable = false)
-    private String answer;
-
-    @Column(nullable = false, length = 100)
-    private String category;
-
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
 
     @Column(nullable = false)
     private Boolean published;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @PrePersist
-    public void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        this.createdAt = now;
-        this.updatedAt = now;
+    @OneToMany(
+            mappedBy = "faq",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    @Builder.Default
+    private Set<FaqTranslation> translations = new HashSet<>();
 
-        if (this.sortOrder == null) {
-            this.sortOrder = 0;
-        }
-        if (this.published == null) {
-            this.published = true;
-        }
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
     }
 
     @PreUpdate
-    public void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

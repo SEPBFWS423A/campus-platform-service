@@ -263,18 +263,18 @@ public class AdminController {
 
     //FAQ
     @GetMapping("/faqs")
-    public List<FaqResponse> getAllFaqs() {
-        return faqService.getAllFaqs();
+    public List<FaqAdminResponse> getAllFaqs() {
+        return faqService.getAllFaqsForAdmin();
     }
 
     @PostMapping("/faqs")
-    public FaqResponse createFaq(@Valid @RequestBody FaqUpsertRequest request) {
+    public FaqAdminResponse createFaq(@Valid @RequestBody FaqUpsertRequest request) {
         return faqService.create(request);
     }
 
     @PutMapping("/faqs/{id}")
-    public FaqResponse updateFaq(@PathVariable Long id,
-                                 @Valid @RequestBody FaqUpsertRequest request) {
+    public FaqAdminResponse updateFaq(@PathVariable Long id,
+                                      @Valid @RequestBody FaqUpsertRequest request) {
         return faqService.update(id, request);
     }
 

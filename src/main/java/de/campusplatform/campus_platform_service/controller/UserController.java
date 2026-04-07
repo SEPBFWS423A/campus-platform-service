@@ -83,7 +83,7 @@ public class UserController {
 
     //FAQ
     @GetMapping("/faqs")
-    public List<FaqResponse> getVisibleFaqs() {
-        return faqService.getVisibleFaqs();
+    public List<FaqResponse> getVisibleFaqs(@RequestParam(defaultValue = "de") String lang) {
+        return faqService.getVisibleFaqs(lang);
     }
 }
