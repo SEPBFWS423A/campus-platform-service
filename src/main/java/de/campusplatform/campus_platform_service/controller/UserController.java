@@ -80,8 +80,7 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-
-    //FAQ
+    // FAQ
     @GetMapping("/faqs")
     public List<FaqResponse> getVisibleFaqs(@RequestParam(defaultValue = "de") String lang) {
         return faqService.getVisibleFaqs(lang);
