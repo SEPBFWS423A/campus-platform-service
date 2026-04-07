@@ -133,6 +133,10 @@ public class DataInitializer implements CommandLineRunner {
                 StudyGroup mockG1 = allGroups.stream().filter(g -> g.getName().equals("BFWS424A")).findFirst().orElse(null);
                 StudyGroup mockG2 = allGroups.stream().filter(g -> g.getName().equals("BFWI424A")).findFirst().orElse(null);
 
+                if (mockG1 == null || mockG2 == null) {
+                    throw new IllegalStateException("Required study groups for demo data are missing!");
+                }
+
                 CourseSeries cs1 = CourseSeries.builder()
                         .module(prog1)
                         .assignedLecturer(a)
@@ -140,7 +144,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(kl)
                         .submissionStartDate(LocalDateTime.now().minusDays(10))
                         .submissionDeadline(LocalDateTime.now().plusDays(20))
-                        .studyGroups(mockG1 != null ? java.util.Set.of(mockG1) : new java.util.HashSet<>())
+                        .studyGroups(java.util.Set.of(mockG1))
                         .build();
 
                 CourseSeries cs2 = CourseSeries.builder()
@@ -150,7 +154,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(rf)
                         .submissionStartDate(LocalDateTime.now().plusDays(30))
                         .submissionDeadline(LocalDateTime.now().plusDays(60))
-                        .studyGroups(mockG2 != null ? java.util.Set.of(mockG2) : new java.util.HashSet<>())
+                        .studyGroups(java.util.Set.of(mockG2))
                         .build();
 
                 CourseSeries cs3 = CourseSeries.builder()
@@ -160,7 +164,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(kl)
                         .submissionStartDate(LocalDateTime.now().minusDays(90))
                         .submissionDeadline(LocalDateTime.now().minusDays(30))
-                        .studyGroups(mockG1 != null && mockG2 != null ? java.util.Set.of(mockG1, mockG2) : new java.util.HashSet<>())
+                        .studyGroups(java.util.Set.of(mockG1, mockG2))
                         .build();
 
                 List<CourseSeries> savedSeries = courseSeriesRepository.saveAll(List.of(cs1, cs2, cs3));
@@ -174,7 +178,7 @@ public class DataInitializer implements CommandLineRunner {
                             eventRepository.save(Event.builder()
                                 .courseSeries(series)
                                 .room(room)
-                                .name(series.getModule().getName() + " - Termin " + (i + 1))
+                                .name(series.getModule().getName() + " (" + (i + 1) + ")")
                                 .eventType(EventType.LEHRVERANSTALTUNG)
                                 .startTime(series.getSubmissionStartDate().plusWeeks(i).withHour(Math.min(8 + i, 18)).withMinute(0))
                                 .durationMinutes(90)

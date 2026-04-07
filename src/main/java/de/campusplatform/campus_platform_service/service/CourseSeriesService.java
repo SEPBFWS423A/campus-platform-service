@@ -43,6 +43,12 @@ public class CourseSeriesService {
                 .collect(Collectors.toList());
     }
 
+    public AdminCourseSeriesResponse getCourseSeriesById(Long id) {
+        CourseSeries courseSeries = courseSeriesRepository.findById(id)
+                .orElseThrow(() -> new AppException("Course Series not found"));
+        return mapToAdminResponse(courseSeries);
+    }
+
     public AdminCourseSeriesResponse createCourseSeries(CourseSeriesRequest request) {
         CourseSeries courseSeries = new CourseSeries();
         mapRequestToEntity(request, courseSeries);

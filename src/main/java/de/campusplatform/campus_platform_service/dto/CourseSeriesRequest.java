@@ -2,8 +2,8 @@ package de.campusplatform.campus_platform_service.dto;
 
 import de.campusplatform.campus_platform_service.model.CourseStatus;
 
+import jakarta.validation.constraints.NotEmpty;
 import java.time.LocalDateTime;
-
 import java.util.List;
 
 public record CourseSeriesRequest(
@@ -13,5 +13,6 @@ public record CourseSeriesRequest(
         Long selectedExamTypeId,
         LocalDateTime submissionStartDate,
         LocalDateTime submissionDeadline,
+        @NotEmpty(message = "Study groups are required")
         List<Long> studyGroupIds
 ) {}
