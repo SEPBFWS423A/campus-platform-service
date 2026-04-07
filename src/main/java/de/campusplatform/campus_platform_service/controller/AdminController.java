@@ -140,9 +140,19 @@ public class AdminController {
     }
 
     @PostMapping("/groups")
-    public ResponseEntity<Void> createGroup(@RequestBody StudyGroupRequest request) {
-        studyGroupService.createGroup(request);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<AdminGroupResponse> createGroup(@RequestBody StudyGroupRequest request) {
+        return ResponseEntity.ok(studyGroupService.createGroup(request));
+    }
+
+    @PutMapping("/groups/{id}")
+    public ResponseEntity<AdminGroupResponse> updateGroup(@PathVariable Long id, @RequestBody StudyGroupRequest request) {
+        return ResponseEntity.ok(studyGroupService.updateGroup(id, request));
+    }
+
+    @DeleteMapping("/groups/{id}")
+    public ResponseEntity<Void> deleteGroup(@PathVariable Long id) {
+        studyGroupService.deleteGroup(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/groups/{groupId}/members/{userId}")
@@ -175,9 +185,23 @@ public class AdminController {
         return ResponseEntity.ok(new AdminCourseResponse(saved.getId(), saved.getName(), saved.getDegreeType()));
     }
 
+    @PutMapping("/courses/{id}")
+    public ResponseEntity<AdminCourseResponse> updateCourse(@PathVariable Long id, @RequestBody CourseRequest request) {
+        CourseOfStudy current = courseOfStudyRepository.findById(id).orElseThrow();
+        current.setName(request.name());
+        current.setDegreeType(request.degreeType());
+        CourseOfStudy saved = courseOfStudyRepository.save(current);
+        return ResponseEntity.ok(new AdminCourseResponse(saved.getId(), saved.getName(), saved.getDegreeType()));
+    }
+
     @DeleteMapping("/courses/{id}")
     public ResponseEntity<Void> deleteCourse(@PathVariable Long id) {
-        courseOfStudyRepository.deleteById(id);
+        try {
+            courseOfStudyRepository.deleteById(id);
+            courseOfStudyRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new de.campusplatform.campus_platform_service.exception.AppException("error.course.referenced");
+        }
         return ResponseEntity.ok().build();
     }
 
@@ -201,9 +225,26 @@ public class AdminController {
         return ResponseEntity.ok(new AdminSpecializationResponse(saved.getId(), saved.getName(), saved.getCourseOfStudy().getId()));
     }
 
+    @PutMapping("/specializations/{id}")
+    public ResponseEntity<AdminSpecializationResponse> updateSpecialization(@PathVariable Long id, @RequestBody SpecializationRequest request) {
+        Specialization current = specializationRepository.findById(id).orElseThrow();
+        current.setName(request.name());
+        if (request.courseId() != null) {
+            CourseOfStudy cos = courseOfStudyRepository.findById(request.courseId()).orElseThrow();
+            current.setCourseOfStudy(cos);
+        }
+        Specialization saved = specializationRepository.save(current);
+        return ResponseEntity.ok(new AdminSpecializationResponse(saved.getId(), saved.getName(), saved.getCourseOfStudy().getId()));
+    }
+
     @DeleteMapping("/specializations/{id}")
     public ResponseEntity<Void> deleteSpecialization(@PathVariable Long id) {
-        specializationRepository.deleteById(id);
+        try {
+            specializationRepository.deleteById(id);
+            specializationRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new de.campusplatform.campus_platform_service.exception.AppException("error.specialization.referenced");
+        }
         return ResponseEntity.ok().build();
     }
 
@@ -247,7 +288,12 @@ public class AdminController {
 
     @DeleteMapping("/exam-types/{id}")
     public ResponseEntity<Void> deleteExamType(@PathVariable Long id) {
-        examTypeRepository.deleteById(id);
+        try {
+            examTypeRepository.deleteById(id);
+            examTypeRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new de.campusplatform.campus_platform_service.exception.AppException("error.examType.referenced");
+        }
         return ResponseEntity.ok().build();
     }
 

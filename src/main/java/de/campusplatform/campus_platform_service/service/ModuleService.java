@@ -165,6 +165,11 @@ public class ModuleService {
         if (!moduleRepository.existsById(id)) {
             throw new AppException("error.module.notFound");
         }
-        moduleRepository.deleteById(id);
+        try {
+            moduleRepository.deleteById(id);
+            moduleRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new AppException("error.module.referenced");
+        }
     }
 }

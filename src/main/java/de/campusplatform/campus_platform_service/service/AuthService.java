@@ -127,6 +127,8 @@ public class AuthService {
         AppUser user = userRepository.findByEmail(invitation.getEmail())
                 .orElseThrow(() -> new AppException("error.user.notFound"));
 
+        user.setSalutation(request.getSalutation());
+        user.setTitle(request.getTitle());
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
