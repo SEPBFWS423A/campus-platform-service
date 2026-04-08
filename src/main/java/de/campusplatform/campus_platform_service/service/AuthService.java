@@ -189,7 +189,7 @@ public class AuthService {
     public UserProfileResponse getUserProfile(String username) {
         AppUser user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new AppException("error.user.notFound"));
-        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getEmail(), user.getFirstName(), user.getLastName(), user.getRole(), user.getTheme(), user.getBrightness(), user.getLanguage());
+        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getSalutation(), user.getTitle(), user.getEmail(), user.getFirstName(), user.getLastName(), user.getRole(), user.getTheme(), user.getBrightness(), user.getLanguage());
         
         if (user.getRole() == Role.STUDENT && user.getStudentProfile() != null) {
             StudentProfile profile = user.getStudentProfile();
@@ -210,6 +210,12 @@ public class AuthService {
         AppUser user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new AppException("error.user.notFound"));
 
+        if (request.getSalutation() != null) {
+            user.setSalutation(request.getSalutation());
+        }
+        if (request.getTitle() != null) {
+            user.setTitle(request.getTitle());
+        }
         if (StringUtils.hasText(request.getFirstName())) {
             user.setFirstName(request.getFirstName());
         }
@@ -242,6 +248,12 @@ public class AuthService {
         AppUser user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException("error.user.notFound"));
 
+        if (request.salutation() != null) {
+            user.setSalutation(request.salutation());
+        }
+        if (request.title() != null) {
+            user.setTitle(request.title());
+        }
         if (StringUtils.hasText(request.firstName())) {
             user.setFirstName(request.firstName());
         }
