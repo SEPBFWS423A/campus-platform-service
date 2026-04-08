@@ -18,8 +18,11 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String salutation;
-    private String title;
+    @Enumerated(EnumType.STRING)
+    private Salutation salutation;
+
+    @Enumerated(EnumType.STRING)
+    private AcademicTitle title;
     private String lastName;
     private String firstName;
     private String email;
