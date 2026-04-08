@@ -1,5 +1,6 @@
 package de.campusplatform.campus_platform_service.dto;
 
+import de.campusplatform.campus_platform_service.model.AcademicTitle;
 import java.util.List;
 
 public record AdminGroupResponse(
@@ -15,7 +16,7 @@ public record AdminGroupResponse(
     public record GroupMemberDTO(
             Long id,
             String studentNumber,
-            String title,
+            AcademicTitle title,
             String firstName,
             String lastName
     ) {}

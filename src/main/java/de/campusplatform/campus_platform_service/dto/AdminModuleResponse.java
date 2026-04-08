@@ -1,5 +1,6 @@
 package de.campusplatform.campus_platform_service.dto;
 
+import de.campusplatform.campus_platform_service.model.AcademicTitle;
 import java.util.List;
 
 public record AdminModuleResponse(
@@ -24,7 +25,7 @@ public record AdminModuleResponse(
 
     public record LecturerDTO(
             Long id,
-            String title,
+            AcademicTitle title,
             String firstName,
             String lastName
     ) {}
