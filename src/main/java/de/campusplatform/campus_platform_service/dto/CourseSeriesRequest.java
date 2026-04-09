@@ -1,6 +1,6 @@
 package de.campusplatform.campus_platform_service.dto;
 
-import de.campusplatform.campus_platform_service.model.CourseStatus;
+import de.campusplatform.campus_platform_service.enums.CourseStatus;
 
 import jakarta.validation.constraints.NotEmpty;
 import java.time.LocalDateTime;

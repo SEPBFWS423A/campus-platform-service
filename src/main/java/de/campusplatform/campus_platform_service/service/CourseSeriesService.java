@@ -3,11 +3,13 @@ package de.campusplatform.campus_platform_service.service;
 import de.campusplatform.campus_platform_service.dto.AdminCourseSeriesResponse;
 import de.campusplatform.campus_platform_service.dto.CourseSeriesRequest;
 import de.campusplatform.campus_platform_service.exception.AppException;
+import de.campusplatform.campus_platform_service.enums.ExamStatus;
+import de.campusplatform.campus_platform_service.enums.CourseStatus;
+import de.campusplatform.campus_platform_service.enums.Role;
 import de.campusplatform.campus_platform_service.model.AppUser;
 import de.campusplatform.campus_platform_service.model.CourseSeries;
 import de.campusplatform.campus_platform_service.model.ExamType;
 import de.campusplatform.campus_platform_service.model.Module;
-import de.campusplatform.campus_platform_service.model.Role;
 import de.campusplatform.campus_platform_service.model.StudyGroup;
 import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 import de.campusplatform.campus_platform_service.repository.CourseSeriesRepository;
@@ -104,7 +106,13 @@ public class CourseSeriesService {
 
         entity.setModule(module);
         entity.setAssignedLecturer(lecturer);
-        entity.setStatus(request.status());
+        
+        if (request.status() == CourseStatus.COMPLETED && entity.getExamStatus() != ExamStatus.COMPLETED) {
+            entity.setStatus(CourseStatus.GRADING);
+        } else {
+            entity.setStatus(request.status());
+        }
+
         entity.setSelectedExamType(examType);
         entity.setSubmissionStartDate(request.submissionStartDate());
         entity.setSubmissionDeadline(request.submissionDeadline());

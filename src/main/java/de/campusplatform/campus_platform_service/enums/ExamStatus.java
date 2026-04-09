@@ -1,8 +1,8 @@
 package de.campusplatform.campus_platform_service.enums;
 
-public enum CourseStatus {
-    PLANNED,
-    ACTIVE,
+public enum ExamStatus {
+    OPEN,
+    PROVIDED,
     GRADING,
     COMPLETED
 }

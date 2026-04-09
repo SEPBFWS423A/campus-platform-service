@@ -1,7 +1,7 @@
 package de.campusplatform.campus_platform_service.dto;
 
-import de.campusplatform.campus_platform_service.model.Salutation;
-import de.campusplatform.campus_platform_service.model.AcademicTitle;
+import de.campusplatform.campus_platform_service.enums.Salutation;
+import de.campusplatform.campus_platform_service.enums.AcademicTitle;
 import lombok.Data;
 
 @Data

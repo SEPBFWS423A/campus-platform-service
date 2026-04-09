@@ -1,6 +1,6 @@
 package de.campusplatform.campus_platform_service.dto;
 
-import de.campusplatform.campus_platform_service.model.EventType;
+import de.campusplatform.campus_platform_service.enums.EventType;
 import java.time.LocalDateTime;
 
 public record AdminEventResponse(

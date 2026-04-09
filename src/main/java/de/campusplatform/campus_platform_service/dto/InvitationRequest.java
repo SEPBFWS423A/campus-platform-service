@@ -1,6 +1,6 @@
 package de.campusplatform.campus_platform_service.dto;
 
-import de.campusplatform.campus_platform_service.model.Role;
+import de.campusplatform.campus_platform_service.enums.Role;
 import lombok.Data;
 
 @Data

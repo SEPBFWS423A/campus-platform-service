@@ -2,11 +2,14 @@ package de.campusplatform.campus_platform_service.service;
 
 import de.campusplatform.campus_platform_service.dto.*;
 import de.campusplatform.campus_platform_service.exception.AppException;
+import de.campusplatform.campus_platform_service.enums.InvitationStatus;
+import de.campusplatform.campus_platform_service.enums.Role;
+import de.campusplatform.campus_platform_service.enums.Salutation;
+import de.campusplatform.campus_platform_service.enums.AcademicTitle;
 import de.campusplatform.campus_platform_service.model.Invitation;
-import de.campusplatform.campus_platform_service.model.InvitationStatus;
 import de.campusplatform.campus_platform_service.model.AppUser;
-import de.campusplatform.campus_platform_service.model.Role;
 import de.campusplatform.campus_platform_service.model.VerificationToken;
+import de.campusplatform.campus_platform_service.model.*;
 import de.campusplatform.campus_platform_service.repository.InvitationRepository;
 import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 import de.campusplatform.campus_platform_service.repository.SpecializationRepository;

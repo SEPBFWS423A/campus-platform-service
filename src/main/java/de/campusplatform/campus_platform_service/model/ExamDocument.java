@@ -1,10 +1,8 @@
 package de.campusplatform.campus_platform_service.model;
 
-import de.campusplatform.campus_platform_service.enums.EventType;
+import de.campusplatform.campus_platform_service.enums.ExamDocumentType;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -12,25 +10,23 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "event")
-public class Event {
+@Table(name = "exam_document")
+public class ExamDocument {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_series_id")
     private CourseSeries courseSeries;
 
-    @ManyToOne
-    @JoinColumn(name = "room_id")
-    private Room room;
-
-    private String name;
+    private String fileName;
 
     @Enumerated(EnumType.STRING)
-    private EventType eventType;
+    private ExamDocumentType type;
 
-    private LocalDateTime startTime;
-    private Integer durationMinutes;
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
+    private String content; // Base64 encoded or text content
 }

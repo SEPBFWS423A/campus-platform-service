@@ -1,6 +1,6 @@
 package de.campusplatform.campus_platform_service.dto;
 
-import de.campusplatform.campus_platform_service.model.AcademicTitle;
+import de.campusplatform.campus_platform_service.enums.AcademicTitle;
 import java.util.List;
 
 public record AdminGroupResponse(

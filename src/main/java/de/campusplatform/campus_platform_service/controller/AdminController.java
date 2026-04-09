@@ -287,6 +287,7 @@ public class AdminController {
     public ResponseEntity<ExamType> updateExamType(@PathVariable Long id, @RequestBody ExamType examType) {
         ExamType current = examTypeRepository.findById(id).orElseThrow();
         current.setType(examType.getType());
+        current.setCategory(examType.getCategory());
         current.setNameDe(examType.getNameDe());
         current.setNameEn(examType.getNameEn());
         current.setShortDe(examType.getShortDe());
