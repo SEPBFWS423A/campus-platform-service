@@ -15,5 +15,6 @@ public class PersonalDetailsRequest {
     // Student fields
     private String studentNumber;
     private Integer startYear;
+    private Integer startQuartal;
     private Long specializationId;
 }

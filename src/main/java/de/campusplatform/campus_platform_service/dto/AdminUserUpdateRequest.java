@@ -13,6 +13,7 @@ public record AdminUserUpdateRequest(
         Role role,
         String studentNumber,
         Integer startYear,
+        Integer startQuartal,
         Long specializationId
 ) {
 }

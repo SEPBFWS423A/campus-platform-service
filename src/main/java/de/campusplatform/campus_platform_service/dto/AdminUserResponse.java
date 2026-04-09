@@ -15,8 +15,10 @@ public record AdminUserResponse(
         boolean enabled,
         String studentNumber,
         Integer startYear,
+        Integer startQuartal,
         Long specializationId,
         String specializationName,
+        Long courseOfStudyId,
         String courseOfStudyName
 ) {
 }

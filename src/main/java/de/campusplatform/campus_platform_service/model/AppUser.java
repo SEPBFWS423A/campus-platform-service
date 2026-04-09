@@ -37,6 +37,12 @@ public class AppUser {
     private String brightness;
     private String language;
 
+    @Column(name = "start_year")
+    private Integer startYear;
+
+    @Column(name = "start_quartal")
+    private Integer startQuartal;
+
     @OneToOne(mappedBy = "appUser", cascade = CascadeType.ALL, orphanRemoval = true)
     private StudentProfile studentProfile;
 

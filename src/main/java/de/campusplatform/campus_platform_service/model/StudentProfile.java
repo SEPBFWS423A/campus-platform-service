@@ -28,6 +28,9 @@ public class StudentProfile {
     @Column(name = "start_year")
     private Integer startYear;
 
+    @Column(name = "start_quartal")
+    private Integer startQuartal;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "specialization_id")
     private Specialization specialization;

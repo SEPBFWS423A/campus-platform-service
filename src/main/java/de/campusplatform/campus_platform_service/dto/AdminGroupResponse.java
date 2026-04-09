@@ -11,6 +11,8 @@ public record AdminGroupResponse(
         Long specializationId,
         String specialization,
         int memberCount,
+        Integer startYear,
+        Integer startQuartal,
         List<GroupMemberDTO> members
 ) {
     public record GroupMemberDTO(

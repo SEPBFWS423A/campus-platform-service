@@ -24,4 +24,10 @@ public class StudyGroup {
     @ManyToOne(optional = false)
     @JoinColumn(name = "specialization_id")
     private Specialization specialization;
+
+    @Column(name = "start_year")
+    private Integer startYear;
+
+    @Column(name = "start_quartal")
+    private Integer startQuartal;
 }

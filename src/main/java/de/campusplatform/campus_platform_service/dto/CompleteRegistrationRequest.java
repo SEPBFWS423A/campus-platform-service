@@ -16,5 +16,6 @@ public class CompleteRegistrationRequest {
     // Student profile details (only used if role is student)
     private String studentNumber;
     private Integer startYear;
+    private Integer startQuartal;
     private Long specializationId;
 }
