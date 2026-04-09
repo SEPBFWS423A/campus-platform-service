@@ -102,6 +102,8 @@ public class StudyGroupService {
                             group.getSpecialization().getId(),
                             group.getSpecialization().getName(),
                             members.size(),
+                            group.getStartYear(),
+                            group.getStartQuartal(),
                             members
                     );
                 })
@@ -128,6 +130,8 @@ public class StudyGroupService {
                 group.getSpecialization().getId(),
                 group.getSpecialization().getName(),
                 members.size(),
+                group.getStartYear(),
+                group.getStartQuartal(),
                 members
         );
     }
@@ -144,6 +148,8 @@ public class StudyGroupService {
         StudyGroup group = StudyGroup.builder()
                 .name(request.name())
                 .specialization(specialization)
+                .startYear(request.startYear())
+                .startQuartal(request.startQuartal())
                 .build();
 
         StudyGroup saved = studyGroupRepository.save(group);
@@ -164,6 +170,8 @@ public class StudyGroupService {
 
         group.setName(request.name());
         group.setSpecialization(specialization);
+        group.setStartYear(request.startYear());
+        group.setStartQuartal(request.startQuartal());
         StudyGroup saved = studyGroupRepository.save(group);
         return mapToResponse(saved);
     }

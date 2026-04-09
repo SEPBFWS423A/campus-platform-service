@@ -85,6 +85,8 @@ public class UserInitializer implements CommandLineRunner {
         admin.setEnabled(true);
         admin.setTheme(defaultTheme);
         admin.setBrightness(defaultBrightness);
+        admin.setStartYear(2024);
+        admin.setStartQuartal(4);
         userRepository.save(admin);
     }
 
@@ -98,6 +100,8 @@ public class UserInitializer implements CommandLineRunner {
         lecturer.setEnabled(true);
         lecturer.setTheme(defaultTheme);
         lecturer.setBrightness(defaultBrightness);
+        lecturer.setStartYear(2024);
+        lecturer.setStartQuartal(4);
         userRepository.save(lecturer);
     }
 
@@ -111,6 +115,8 @@ public class UserInitializer implements CommandLineRunner {
         student.setEnabled(true);
         student.setTheme(defaultTheme);
         student.setBrightness(defaultBrightness);
+        student.setStartYear(2024);
+        student.setStartQuartal(4);
         userRepository.save(student);
     }
 }

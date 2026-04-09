@@ -11,4 +11,5 @@ public class InvitationRequest {
     private String language;
     private Long specializationId;
     private Integer startYear;
+    private Integer startQuartal;
 }

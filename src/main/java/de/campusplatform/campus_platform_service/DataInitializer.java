@@ -148,11 +148,11 @@ public class DataInitializer implements CommandLineRunner {
                 // Bergisch Gladbach (B), FDSE (F), Wirtschaftsinformatik (W), SE/CS/ITC
                 // (S/C/I), Q4 (4), 2024 (24), Bachelor (A)
                 StudyGroup g1 = studyGroupRepository
-                        .save(StudyGroup.builder().name("BFWS424A").specialization(seSpec).build());
+                        .save(StudyGroup.builder().name("BFWS424A").specialization(seSpec).startYear(2024).startQuartal(4).build());
                 StudyGroup g2 = studyGroupRepository
-                        .save(StudyGroup.builder().name("BFWC424A").specialization(csSpec).build());
+                        .save(StudyGroup.builder().name("BFWC424A").specialization(csSpec).startYear(2024).startQuartal(4).build());
                 StudyGroup g3 = studyGroupRepository
-                        .save(StudyGroup.builder().name("BFWI424A").specialization(iteSpec).build());
+                        .save(StudyGroup.builder().name("BFWI424A").specialization(iteSpec).startYear(2024).startQuartal(4).build());
 
                 createStudentsForGroup(g1, 20, 1000);
                 createStudentsForGroup(g2, 10, 2000);
@@ -248,6 +248,8 @@ public class DataInitializer implements CommandLineRunner {
                 .password("password")
                 .role(Role.LECTURER)
                 .enabled(true)
+                .startYear(2024)
+                .startQuartal(4)
                 .build());
     }
 
@@ -275,11 +277,18 @@ public class DataInitializer implements CommandLineRunner {
                     .password("password")
                     .role(Role.STUDENT)
                     .enabled(true)
+                    .startYear(2024)
+                    .startQuartal(4)
                     .build();
             user = userRepository.save(user);
 
-            StudentProfile profile = StudentProfile.builder().appUser(user).studentNumber("S-" + (studentNumStart + i))
-                    .startYear(2024).specialization(group.getSpecialization()).build();
+            StudentProfile profile = StudentProfile.builder()
+                    .appUser(user)
+                    .studentNumber("S-" + (studentNumStart + i))
+                    .startYear(2024)
+                    .startQuartal(4)
+                    .specialization(group.getSpecialization())
+                    .build();
             profile = profileRepository.save(profile);
 
             user.setStudentProfile(profile);

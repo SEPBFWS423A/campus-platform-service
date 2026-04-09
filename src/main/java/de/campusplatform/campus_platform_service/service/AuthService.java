@@ -92,7 +92,7 @@ public class AuthService {
             }
         }
 
-        Invitation invitation = new Invitation(request.getEmail(), request.getRole(), studentId, request.getSpecializationId(), request.getStartYear());
+        Invitation invitation = new Invitation(request.getEmail(), request.getRole(), studentId, request.getSpecializationId(), request.getStartYear(), request.getStartQuartal());
         invitationRepository.save(invitation);
         emailService.sendInvitationEmail(invitation, request.getLanguage());
     }
@@ -150,12 +150,15 @@ public class AuthService {
             
             // Student ID (Studenten-Nr.)
             String studentNum = StringUtils.hasText(invitation.getStudentNumber()) ? 
-                                invitation.getStudentNumber() : request.getStudentNumber();
+                                 invitation.getStudentNumber() : request.getStudentNumber();
             profile.setStudentNumber(studentNum);
             
-            // Start Year
+            // Start Year & Quartal
             Integer startYear = (invitation.getStartYear() != null) ? invitation.getStartYear() : request.getStartYear();
             profile.setStartYear(startYear);
+
+            Integer startQuartal = (invitation.getStartQuartal() != null) ? invitation.getStartQuartal() : request.getStartQuartal();
+            profile.setStartQuartal(startQuartal);
             
             // Specialization
             Long specId = (invitation.getSpecializationId() != null) ? invitation.getSpecializationId() : request.getSpecializationId();
@@ -195,6 +198,7 @@ public class AuthService {
             StudentProfile profile = user.getStudentProfile();
             response.setStudentNumber(profile.getStudentNumber());
             response.setStartYear(profile.getStartYear());
+            response.setStartQuartal(profile.getStartQuartal());
             if (profile.getSpecialization() != null) {
                 response.setSpecializationId(profile.getSpecialization().getId());
                 response.setSpecializationName(profile.getSpecialization().getName());
@@ -233,6 +237,9 @@ public class AuthService {
             }
             if (request.getStartYear() != null) {
                 profile.setStartYear(request.getStartYear());
+            }
+            if (request.getStartQuartal() != null) {
+                profile.setStartQuartal(request.getStartQuartal());
             }
             if (request.getSpecializationId() != null) {
                 Specialization specialization = specializationRepository.findById(request.getSpecializationId())
@@ -274,6 +281,9 @@ public class AuthService {
             }
             if (request.startYear() != null) {
                 profile.setStartYear(request.startYear());
+            }
+            if (request.startQuartal() != null) {
+                profile.setStartQuartal(request.startQuartal());
             }
             if (request.specializationId() != null) {
                 Specialization specialization = specializationRepository.findById(request.specializationId())
@@ -356,19 +366,23 @@ public class AuthService {
         return userRepository.findAll().stream()
                 .map(user -> {
                     String studentNumber = null;
-                    Integer startYear = null;
+                    Integer startYear = user.getStartYear();
+                    Integer startQuartal = user.getStartQuartal();
                     Long specializationId = null;
                     String specializationName = null;
+                    Long courseOfStudyId = null;
                     String courseOfStudyName = null;
 
                     if (user.getRole() == Role.STUDENT && user.getStudentProfile() != null) {
                         StudentProfile profile = user.getStudentProfile();
                         studentNumber = profile.getStudentNumber();
                         startYear = profile.getStartYear();
+                        startQuartal = profile.getStartQuartal();
                         if (profile.getSpecialization() != null) {
                             specializationId = profile.getSpecialization().getId();
                             specializationName = profile.getSpecialization().getName();
                             if (profile.getSpecialization().getCourseOfStudy() != null) {
+                                courseOfStudyId = profile.getSpecialization().getCourseOfStudy().getId();
                                 courseOfStudyName = profile.getSpecialization().getCourseOfStudy().getName();
                             }
                         }
@@ -385,8 +399,10 @@ public class AuthService {
                             user.isEnabled(),
                             studentNumber,
                             startYear,
+                            startQuartal,
                             specializationId,
                             specializationName,
+                            courseOfStudyId,
                             courseOfStudyName
                     );
                 })

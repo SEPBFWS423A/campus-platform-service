@@ -23,6 +23,7 @@ public class UserProfileResponse {
     // Student extension details (nullable)
     private String studentNumber;
     private Integer startYear;
+    private Integer startQuartal;
     private Long specializationId;
     private String specializationName;
     private String courseOfStudyName;
