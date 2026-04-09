@@ -8,7 +8,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import de.campusplatform.campus_platform_service.model.AppUser;
-import de.campusplatform.campus_platform_service.model.Role;
+import de.campusplatform.campus_platform_service.enums.Role;
 import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 
 @Component

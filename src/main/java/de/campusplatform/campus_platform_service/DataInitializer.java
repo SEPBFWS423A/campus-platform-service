@@ -1,5 +1,6 @@
 package de.campusplatform.campus_platform_service;
 
+import de.campusplatform.campus_platform_service.enums.*;
 import de.campusplatform.campus_platform_service.model.*;
 import de.campusplatform.campus_platform_service.model.Module;
 import de.campusplatform.campus_platform_service.repository.*;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 @Order(2)
@@ -30,6 +32,8 @@ public class DataInitializer implements CommandLineRunner {
     private final CourseSeriesRepository courseSeriesRepository;
     private final RoomRepository roomRepository;
     private final EventRepository eventRepository;
+    private final StudentCourseSubmissionRepository submissionRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
@@ -49,11 +53,11 @@ public class DataInitializer implements CommandLineRunner {
                     .build());
 
             // Base Exam Types
-            ExamType kl = examTypeRepository.save(ExamType.builder().type("KL").nameDe("Klausur").nameEn("Written Exam")
+            ExamType kl = examTypeRepository.save(ExamType.builder().type("KL").category(ExamCategory.WRITTEN).nameDe("Klausur").nameEn("Written Exam")
                     .shortDe("KL").shortEn("WE").build());
-            ExamType rf = examTypeRepository.save(ExamType.builder().type("RF").nameDe("Referat").nameEn("Presentation")
+            ExamType rf = examTypeRepository.save(ExamType.builder().type("RF").category(ExamCategory.SUBMISSION).nameDe("Referat").nameEn("Presentation")
                     .shortDe("RF").shortEn("PRS").build());
-            ExamType sa = examTypeRepository.save(ExamType.builder().type("SA").nameDe("Studienarbeit")
+            ExamType sa = examTypeRepository.save(ExamType.builder().type("SA").category(ExamCategory.SUBMISSION).nameDe("Studienarbeit")
                     .nameEn("Term Paper").shortDe("SA").shortEn("TP").build());
             Set<ExamType> allTypes = Set.of(kl, rf, sa);
 
@@ -85,12 +89,13 @@ public class DataInitializer implements CommandLineRunner {
             createSpecializations(aiBachelor,
                     List.of("Smart Systems", "Software-Entwicklung und -Management", "Virtual Worlds"));
 
-            // --- Mockup Lecturers ---
+            AppUser instructor = userRepository.findByEmail("lecturer@campusplatform.de")
+                    .orElseThrow(() -> new IllegalStateException("Initial lecturer not found!"));
             AppUser p = createLecturer(Salutation.MS, AcademicTitle.PROF_DR, "Patrice", "Admin",
                     "p.admin@campusplatform.de");
             AppUser a = createLecturer(Salutation.MR, AcademicTitle.DR, "Adam", "Smart", "a.smart@campusplatform.de");
             AppUser m = createLecturer(Salutation.MR, null, "Marc", "Code", "m.code@campusplatform.de");
-            List<AppUser> lecturers = List.of(p, a, m);
+            List<AppUser> lecturers = List.of(instructor, p, a, m);
 
             // --- Mockup Modules (Wirtschaftsinformatik) ---
             Specialization seSpec = specializationRepository.findAll().stream()
@@ -173,7 +178,7 @@ public class DataInitializer implements CommandLineRunner {
 
                 CourseSeries cs1 = CourseSeries.builder()
                         .module(prog1)
-                        .assignedLecturer(a)
+                        .assignedLecturer(instructor)
                         .status(CourseStatus.ACTIVE)
                         .selectedExamType(kl)
                         .submissionStartDate(LocalDateTime.now().minusDays(10))
@@ -183,7 +188,7 @@ public class DataInitializer implements CommandLineRunner {
 
                 CourseSeries cs2 = CourseSeries.builder()
                         .module(seProject)
-                        .assignedLecturer(p)
+                        .assignedLecturer(instructor)
                         .status(CourseStatus.PLANNED)
                         .selectedExamType(rf)
                         .submissionStartDate(LocalDateTime.now().plusDays(30))
@@ -193,8 +198,9 @@ public class DataInitializer implements CommandLineRunner {
 
                 CourseSeries cs3 = CourseSeries.builder()
                         .module(prog1)
-                        .assignedLecturer(a)
-                        .status(CourseStatus.COMPLETED)
+                        .assignedLecturer(instructor)
+                        .status(CourseStatus.GRADING)
+                        .examStatus(ExamStatus.GRADING)
                         .selectedExamType(kl)
                         .submissionStartDate(LocalDateTime.now().minusDays(90))
                         .submissionDeadline(LocalDateTime.now().minusDays(30))
@@ -209,17 +215,42 @@ public class DataInitializer implements CommandLineRunner {
                     for (CourseSeries series : savedSeries) {
                         for (int i = 0; i < 10; i++) {
                             Room room = rooms.get(i % rooms.size());
+                            EventType type = EventType.LEHRVERANSTALTUNG;
+                            LocalDateTime startTime = series.getSubmissionStartDate().plusWeeks(i)
+                                    .withHour(Math.min(8 + i, 18)).withMinute(0);
+
+                            // Special case for cs3: set last event as KLAUSUR yesterday
+                            if (series == cs3 && i == 9) {
+                                type = EventType.KLAUSUR;
+                                startTime = LocalDateTime.now().minusDays(1).withHour(10).withMinute(0);
+                            }
+
                             eventRepository.save(Event.builder()
                                     .courseSeries(series)
                                     .room(room)
                                     .name(series.getModule().getName() + " (" + (i + 1) + ")")
-                                    .eventType(EventType.LEHRVERANSTALTUNG)
-                                    .startTime(series.getSubmissionStartDate().plusWeeks(i)
-                                            .withHour(Math.min(8 + i, 18)).withMinute(0))
+                                    .eventType(type)
+                                    .startTime(startTime)
                                     .durationMinutes(90)
                                     .build());
                         }
                     }
+                }
+
+                // Create some mock submissions for cs3 to test grading
+                java.util.List<AppUser> allStudents = userRepository.findAll().stream()
+                        .filter(u -> u.getRole() == Role.STUDENT)
+                        .limit(5)
+                        .collect(Collectors.toList());
+                
+                for (AppUser student : allStudents) {
+                    submissionRepository.save(StudentCourseSubmission.builder()
+                            .courseSeries(cs3)
+                            .student(student)
+                            .status(SubmissionStatus.SUBMITTED)
+                            .submissionDate(LocalDateTime.now().minusDays(2))
+                            .documentUrl("https://example.com/submission.pdf")
+                            .build());
                 }
             }
 
@@ -245,7 +276,7 @@ public class DataInitializer implements CommandLineRunner {
                 .firstName(first)
                 .lastName(last)
                 .email(email)
-                .password("password")
+                .password(passwordEncoder.encode("password"))
                 .role(Role.LECTURER)
                 .enabled(true)
                 .startYear(2024)
@@ -274,7 +305,7 @@ public class DataInitializer implements CommandLineRunner {
                     .firstName(firstName)
                     .lastName(lastName)
                     .email(email)
-                    .password("password")
+                    .password(passwordEncoder.encode("password"))
                     .role(Role.STUDENT)
                     .enabled(true)
                     .startYear(2024)
