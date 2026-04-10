@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -29,9 +31,12 @@ public class StudentCourseSubmission {
     @Enumerated(EnumType.STRING)
     private SubmissionStatus status = SubmissionStatus.PENDING;
 
-    private String documentUrl;
     private LocalDateTime submissionDate;
     private Double grade;
     private Double points;
     private String feedback;
+
+    @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<SubmissionDocument> documents = new HashSet<>();
 }
