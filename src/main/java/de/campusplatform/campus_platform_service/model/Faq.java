@@ -21,7 +21,7 @@ public class Faq {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "sort_order", nullable = false)
+    @Column(name = "sort_order", nullable = false, unique = true)
     private Integer sortOrder;
 
     @Column(nullable = false)
