@@ -22,7 +22,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -355,6 +354,8 @@ public class AdminController {
     @DeleteMapping("/faqs/{id}")
     public void deleteFaq(@PathVariable Long id) {
         faqService.delete(id);
+    }
+
     // Course Series
     @GetMapping("/course-series")
     public ResponseEntity<List<AdminCourseSeriesResponse>> getAllCourseSeries() {
