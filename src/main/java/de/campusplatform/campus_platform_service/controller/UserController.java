@@ -7,12 +7,14 @@ import de.campusplatform.campus_platform_service.repository.InstitutionRepositor
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
 import de.campusplatform.campus_platform_service.service.AuthService;
 import de.campusplatform.campus_platform_service.service.FaqService;
-import org.springframework.http.ResponseEntity;
+import de.campusplatform.campus_platform_service.service.StudentSubmissionService;
+import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -24,14 +26,19 @@ public class UserController {
     private final RoomRepository roomRepository;
     private final InstitutionRepository institutionRepository;
     private final FaqService faqService;
+    private final StudentSubmissionService studentSubmissionService;
 
 
-
-    public UserController(AuthService authService, RoomRepository roomRepository, InstitutionRepository institutionRepository, FaqService faqService) {
+    public UserController(AuthService authService,
+                          RoomRepository roomRepository,
+                          InstitutionRepository institutionRepository,
+                          FaqService faqService,
+                          StudentSubmissionService studentSubmissionService) {
         this.authService = authService;
         this.roomRepository = roomRepository;
         this.institutionRepository = institutionRepository;
         this.faqService = faqService;
+        this.studentSubmissionService = studentSubmissionService;
     }
 
     @GetMapping("/institution")
@@ -84,5 +91,91 @@ public class UserController {
     @GetMapping("/faqs")
     public List<FaqResponse> getVisibleFaqs(@RequestParam(defaultValue = "de") String lang) {
         return faqService.getVisibleFaqs(lang);
+    }
+
+    // STUDENT SUBMISSIONS
+
+    @GetMapping("/submissions")
+    public ResponseEntity<List<StudentSubmissionListItemResponse>> getMySubmissions(
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                studentSubmissionService.getMySubmissions(userDetails.getUsername())
+        );
+    }
+
+    @GetMapping("/submissions/{submissionId}")
+    public ResponseEntity<StudentSubmissionDetailResponse> getMySubmissionDetail(
+            @PathVariable Long submissionId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                studentSubmissionService.getMySubmissionDetail(submissionId, userDetails.getUsername())
+        );
+    }
+
+    @PostMapping("/submissions/{submissionId}/documents")
+    public ResponseEntity<SubmissionDocumentResponse> uploadDocument(
+            @PathVariable Long submissionId,
+            @RequestBody UploadSubmissionDocumentRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        SubmissionDocumentResponse response = studentSubmissionService.uploadDocument(
+                submissionId,
+                request,
+                userDetails.getUsername()
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @DeleteMapping("/submissions/{submissionId}/documents/{documentId}")
+    public ResponseEntity<Void> deleteDocument(
+            @PathVariable Long submissionId,
+            @PathVariable Long documentId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        studentSubmissionService.deleteDocument(submissionId, documentId, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/submissions/{submissionId}/documents/{documentId}/download")
+    public ResponseEntity<byte[]> downloadDocument(
+            @PathVariable Long submissionId,
+            @PathVariable Long documentId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        SubmissionDocumentDownloadData download = studentSubmissionService.downloadDocument(
+                submissionId,
+                documentId,
+                userDetails.getUsername()
+        );
+
+        MediaType mediaType;
+        try {
+            mediaType = MediaType.parseMediaType(download.mimeType());
+        } catch (Exception ex) {
+            mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        }
+
+        String contentDisposition = ContentDisposition.attachment()
+                .filename(download.fileName(), StandardCharsets.UTF_8)
+                .build()
+                .toString();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
+                .contentType(mediaType)
+                .contentLength(download.fileSize())
+                .body(download.content());
+    }
+
+    @PostMapping("/submissions/{submissionId}/submit")
+    public ResponseEntity<Void> submitSubmission(
+            @PathVariable Long submissionId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        studentSubmissionService.submitSubmission(submissionId, userDetails.getUsername());
+        return ResponseEntity.ok().build();
     }
 }
