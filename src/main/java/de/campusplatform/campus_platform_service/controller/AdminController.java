@@ -6,6 +6,7 @@ import de.campusplatform.campus_platform_service.repository.ExamTypeRepository;
 import de.campusplatform.campus_platform_service.model.Room;
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
 import de.campusplatform.campus_platform_service.service.AuthService;
+import de.campusplatform.campus_platform_service.service.FaqService;
 import de.campusplatform.campus_platform_service.service.CourseSeriesService;
 import de.campusplatform.campus_platform_service.service.EventService;
 import de.campusplatform.campus_platform_service.service.ModuleService;
@@ -16,6 +17,7 @@ import de.campusplatform.campus_platform_service.repository.CourseOfStudyReposit
 import de.campusplatform.campus_platform_service.repository.SpecializationRepository;
 import de.campusplatform.campus_platform_service.model.CourseOfStudy;
 import de.campusplatform.campus_platform_service.model.Specialization;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -37,17 +39,20 @@ public class AdminController {
     private final SpecializationRepository specializationRepository;
     private final InstitutionRepository institutionRepository;
     private final ExamTypeRepository examTypeRepository;
+    private final FaqService faqService;  
     private final CourseSeriesService courseSeriesService;
     private final EventService eventService;
 
-    public AdminController(AuthService authService, 
+
+    public AdminController(AuthService authService,
                            RoomRepository roomRepository,
-                           StudyGroupService studyGroupService, 
+                           StudyGroupService studyGroupService,
                            ModuleService moduleService,
                            CourseOfStudyRepository courseOfStudyRepository,
                            SpecializationRepository specializationRepository,
                            InstitutionRepository institutionRepository,
                            ExamTypeRepository examTypeRepository,
+                           FaqService faqService,
                            CourseSeriesService courseSeriesService,
                            EventService eventService) {
         this.authService = authService;
@@ -58,6 +63,7 @@ public class AdminController {
         this.specializationRepository = specializationRepository;
         this.institutionRepository = institutionRepository;
         this.examTypeRepository = examTypeRepository;
+        this.faqService = faqService;    
         this.courseSeriesService = courseSeriesService;
         this.eventService = eventService;
     }
@@ -329,6 +335,26 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
+    // FAQ
+    @GetMapping("/faqs")
+    public List<FaqAdminResponse> getAllFaqs() {
+        return faqService.getAllFaqsForAdmin();
+    }
+
+    @PostMapping("/faqs")
+    public FaqAdminResponse createFaq(@Valid @RequestBody FaqUpsertRequest request) {
+        return faqService.create(request);
+    }
+
+    @PutMapping("/faqs/{id}")
+    public FaqAdminResponse updateFaq(@PathVariable Long id,
+                                      @Valid @RequestBody FaqUpsertRequest request) {
+        return faqService.update(id, request);
+    }
+
+    @DeleteMapping("/faqs/{id}")
+    public void deleteFaq(@PathVariable Long id) {
+        faqService.delete(id);
     // Course Series
     @GetMapping("/course-series")
     public ResponseEntity<List<AdminCourseSeriesResponse>> getAllCourseSeries() {

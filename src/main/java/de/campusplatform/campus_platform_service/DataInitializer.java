@@ -29,6 +29,7 @@ public class DataInitializer implements CommandLineRunner {
     private final StudyGroupMembershipRepository membershipRepository;
     private final ModuleRepository moduleRepository;
     private final InstitutionRepository institutionRepository;
+    private final FaqRepository faqRepository;  
     private final CourseSeriesRepository courseSeriesRepository;
     private final RoomRepository roomRepository;
     private final EventRepository eventRepository;
@@ -164,6 +165,8 @@ public class DataInitializer implements CommandLineRunner {
                 createStudentsForGroup(g3, 10, 3000);
             }
 
+            createFaqs();
+  
             // --- Course Series Demo Data ---
             if (courseSeriesRepository.count() == 0) {
                 java.util.List<StudyGroup> allGroups = studyGroupRepository.findAll();
@@ -262,8 +265,8 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("   Courses:         " + courseOfStudyRepository.count());
             System.out.println("   Course Series:   " + courseSeriesRepository.count());
             System.out.println("   Mock Students:   40");
-            System.out
-                    .println("   Study Groups:    " + studyGroupRepository.count() + " (Aligned with Frontend Logic)");
+            System.out.println("   Study Groups:    " + studyGroupRepository.count() + " (Aligned with Frontend Logic)");
+            System.out.println("   FAQs:            " + faqRepository.count());
             System.out.println("=================================================================");
         }
     }
@@ -333,5 +336,151 @@ public class DataInitializer implements CommandLineRunner {
         for (String name : names) {
             specializationRepository.save(Specialization.builder().name(name).courseOfStudy(course).build());
         }
+    }
+
+    private void createFaqs() {
+        if (faqRepository.count() > 0) {
+            return;
+        }
+
+        Faq faq1 = Faq.builder()
+                .sortOrder(1)
+                .published(true)
+                .build();
+        faq1.getTranslations().add(FaqTranslation.builder()
+                .faq(faq1)
+                .languageCode("de")
+                .question("Wie kann ich mein Passwort zurücksetzen?")
+                .answer("Nutzen Sie auf der Login-Seite die Funktion \"Passwort vergessen\". Anschließend erhalten Sie per E-Mail einen Link zum Zurücksetzen Ihres Passworts.")
+                .category("Login & Sicherheit")
+                .build());
+        faq1.getTranslations().add(FaqTranslation.builder()
+                .faq(faq1)
+                .languageCode("en")
+                .question("How can I reset my password?")
+                .answer("Use the \"Forgot password\" function on the login page. You will then receive an email with a link to reset your password.")
+                .category("Login & Security")
+                .build());
+        faqRepository.save(faq1);
+
+        Faq faq2 = Faq.builder()
+                .sortOrder(2)
+                .published(true)
+                .build();
+        faq2.getTranslations().add(FaqTranslation.builder()
+                .faq(faq2)
+                .languageCode("de")
+                .question("Wo finde ich meinen Prüfungsplan?")
+                .answer("Ihren Prüfungsplan finden Sie im Bereich \"Prüfungen\". Dort werden alle freigegebenen Klausur- und Prüfungstermine angezeigt.")
+                .category("Prüfungen")
+                .build());
+        faq2.getTranslations().add(FaqTranslation.builder()
+                .faq(faq2)
+                .languageCode("en")
+                .question("Where can I find my exam schedule?")
+                .answer("You can find your exam schedule in the \"Exams\" section. All released exam dates are displayed there.")
+                .category("Exams")
+                .build());
+        faqRepository.save(faq2);
+
+        Faq faq3 = Faq.builder()
+                .sortOrder(3)
+                .published(true)
+                .build();
+        faq3.getTranslations().add(FaqTranslation.builder()
+                .faq(faq3)
+                .languageCode("de")
+                .question("Wo finde ich Dokumente und Formulare?")
+                .answer("Alle freigegebenen Dokumente und Formulare finden Sie im Bereich \"Downloads\".")
+                .category("Downloads")
+                .build());
+        faq3.getTranslations().add(FaqTranslation.builder()
+                .faq(faq3)
+                .languageCode("en")
+                .question("Where can I find documents and forms?")
+                .answer("All released documents and forms can be found in the \"Downloads\" section.")
+                .category("Downloads")
+                .build());
+        faqRepository.save(faq3);
+
+        Faq faq4 = Faq.builder()
+                .sortOrder(4)
+                .published(true)
+                .build();
+        faq4.getTranslations().add(FaqTranslation.builder()
+                .faq(faq4)
+                .languageCode("de")
+                .question("Wie kann ich die Hochschule kontaktieren?")
+                .answer("Die Kontaktinformationen der Hochschule und des Sekretariats finden Sie im Bereich \"Info\".")
+                .category("Kontakt")
+                .build());
+        faq4.getTranslations().add(FaqTranslation.builder()
+                .faq(faq4)
+                .languageCode("en")
+                .question("How can I contact the university?")
+                .answer("You can find the university and secretariat contact details in the \"Info\" section.")
+                .category("Contact")
+                .build());
+        faqRepository.save(faq4);
+
+        Faq faq5 = Faq.builder()
+                .sortOrder(5)
+                .published(true)
+                .build();
+        faq5.getTranslations().add(FaqTranslation.builder()
+                .faq(faq5)
+                .languageCode("de")
+                .question("Kann ich meine Profildaten selbst ändern?")
+                .answer("Einige persönliche Daten können im Profilbereich geändert werden. Offizielle Stammdaten werden durch die Verwaltung gepflegt.")
+                .category("Benutzerkonto")
+                .build());
+        faq5.getTranslations().add(FaqTranslation.builder()
+                .faq(faq5)
+                .languageCode("en")
+                .question("Can I change my profile data myself?")
+                .answer("Some personal data can be changed in the profile section. Official master data is maintained by the administration.")
+                .category("User Account")
+                .build());
+        faqRepository.save(faq5);
+
+        Faq faq6 = Faq.builder()
+                .sortOrder(6)
+                .published(false)
+                .build();
+        faq6.getTranslations().add(FaqTranslation.builder()
+                .faq(faq6)
+                .languageCode("de")
+                .question("Wann erscheinen neue FAQ-Einträge?")
+                .answer("Neue FAQ-Einträge werden nach redaktioneller Prüfung durch Administratoren veröffentlicht.")
+                .category("FAQ")
+                .build());
+        faq6.getTranslations().add(FaqTranslation.builder()
+                .faq(faq6)
+                .languageCode("en")
+                .question("When are new FAQ entries published?")
+                .answer("New FAQ entries are published after editorial review by administrators.")
+                .category("FAQ")
+                .build());
+        faqRepository.save(faq6);
+
+        Faq faq7 = Faq.builder()
+                .sortOrder(7)
+                .published(false)
+                .build();
+        faq7.getTranslations().add(FaqTranslation.builder()
+                .faq(faq7)
+                .languageCode("de")
+                .question("Werden künftig weitere Self-Service-Funktionen ergänzt?")
+                .answer("Weitere Funktionen sind geplant, aber noch nicht für alle Nutzer freigeschaltet.")
+                .category("System")
+                .build());
+        faq7.getTranslations().add(FaqTranslation.builder()
+                .faq(faq7)
+                .languageCode("en")
+                .question("Will additional self-service features be added in the future?")
+                .answer("Additional features are planned, but they have not yet been enabled for all users.")
+                .category("System")
+                .build());
+        faqRepository.save(faq7);
     }
 }
