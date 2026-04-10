@@ -3,6 +3,7 @@ package de.campusplatform.campus_platform_service.service;
 import de.campusplatform.campus_platform_service.dto.AdminModuleResponse;
 import de.campusplatform.campus_platform_service.dto.ModuleRequest;
 import de.campusplatform.campus_platform_service.exception.AppException;
+import de.campusplatform.campus_platform_service.enums.Role;
 import de.campusplatform.campus_platform_service.model.*;
 import de.campusplatform.campus_platform_service.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -165,6 +166,11 @@ public class ModuleService {
         if (!moduleRepository.existsById(id)) {
             throw new AppException("error.module.notFound");
         }
-        moduleRepository.deleteById(id);
+        try {
+            moduleRepository.deleteById(id);
+            moduleRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new AppException("error.module.referenced");
+        }
     }
 }

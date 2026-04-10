@@ -1,11 +1,13 @@
 package de.campusplatform.campus_platform_service.dto;
 
-import de.campusplatform.campus_platform_service.model.Role;
+import de.campusplatform.campus_platform_service.enums.Role;
+import de.campusplatform.campus_platform_service.enums.Salutation;
+import de.campusplatform.campus_platform_service.enums.AcademicTitle;
 
 public record AdminUserResponse(
         Long id,
-        String salutation,
-        String title,
+        Salutation salutation,
+        AcademicTitle title,
         String firstName,
         String lastName,
         String email,
@@ -13,8 +15,10 @@ public record AdminUserResponse(
         boolean enabled,
         String studentNumber,
         Integer startYear,
+        Integer startQuartal,
         Long specializationId,
         String specializationName,
+        Long courseOfStudyId,
         String courseOfStudyName
 ) {
 }

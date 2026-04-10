@@ -1,5 +1,8 @@
 package de.campusplatform.campus_platform_service.model;
 
+import de.campusplatform.campus_platform_service.enums.Role;
+import de.campusplatform.campus_platform_service.enums.Salutation;
+import de.campusplatform.campus_platform_service.enums.AcademicTitle;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,8 +21,11 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String salutation;
-    private String title;
+    @Enumerated(EnumType.STRING)
+    private Salutation salutation;
+
+    @Enumerated(EnumType.STRING)
+    private AcademicTitle title;
     private String lastName;
     private String firstName;
     private String email;
@@ -33,6 +39,12 @@ public class AppUser {
     private String theme;
     private String brightness;
     private String language;
+
+    @Column(name = "start_year")
+    private Integer startYear;
+
+    @Column(name = "start_quartal")
+    private Integer startQuartal;
 
     @OneToOne(mappedBy = "appUser", cascade = CascadeType.ALL, orphanRemoval = true)
     private StudentProfile studentProfile;

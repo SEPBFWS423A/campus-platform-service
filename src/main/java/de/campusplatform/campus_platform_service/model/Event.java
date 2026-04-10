@@ -1,5 +1,6 @@
 package de.campusplatform.campus_platform_service.model;
 
+import de.campusplatform.campus_platform_service.enums.EventType;
 import jakarta.persistence.*;
 import lombok.*;
 

@@ -1,5 +1,6 @@
 package de.campusplatform.campus_platform_service.model;
 
+import de.campusplatform.campus_platform_service.enums.ExamCategory;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,6 +18,9 @@ public class ExamType {
 
     @Column(unique = true, nullable = false)
     private String type; // The internal code, e.g. KLAUSUR
+
+    @Enumerated(EnumType.STRING)
+    private ExamCategory category;
 
     private String nameDe;
     private String nameEn;

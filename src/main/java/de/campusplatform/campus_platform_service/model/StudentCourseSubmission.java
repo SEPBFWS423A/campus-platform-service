@@ -1,5 +1,6 @@
 package de.campusplatform.campus_platform_service.model;
 
+import de.campusplatform.campus_platform_service.enums.SubmissionStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -31,4 +32,6 @@ public class StudentCourseSubmission {
     private String documentUrl;
     private LocalDateTime submissionDate;
     private Double grade;
+    private Double points;
+    private String feedback;
 }

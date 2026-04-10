@@ -26,4 +26,20 @@ public class InstitutionInfo {
     
     @Column(columnDefinition = "TEXT")
     private String impressum;
+
+    private String invitationEmailSubjectDe;
+    @Column(columnDefinition = "TEXT")
+    private String invitationEmailBodyDe;
+
+    private String invitationEmailSubjectEn;
+    @Column(columnDefinition = "TEXT")
+    private String invitationEmailBodyEn;
+
+    private String passwordResetEmailSubjectDe;
+    @Column(columnDefinition = "TEXT")
+    private String passwordResetEmailBodyDe;
+
+    private String passwordResetEmailSubjectEn;
+    @Column(columnDefinition = "TEXT")
+    private String passwordResetEmailBodyEn;
 }

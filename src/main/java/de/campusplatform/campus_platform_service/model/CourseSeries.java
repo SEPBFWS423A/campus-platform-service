@@ -1,5 +1,7 @@
 package de.campusplatform.campus_platform_service.model;
 
+import de.campusplatform.campus_platform_service.enums.ExamStatus;
+import de.campusplatform.campus_platform_service.enums.CourseStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -33,13 +35,32 @@ public class CourseSeries {
     @JoinColumn(name = "selected_exam_type_id")
     private ExamType selectedExamType;
 
-    private String examFileUrl;
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private ExamStatus examStatus = ExamStatus.OPEN;
+
+    private String lecturerNotes;
     private LocalDateTime submissionStartDate;
     private LocalDateTime submissionDeadline;
 
     @OneToMany(mappedBy = "courseSeries", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Event> events;
+    @Builder.Default
+    private Set<ExamDocument> documents = new java.util.HashSet<>();
 
     @OneToMany(mappedBy = "courseSeries", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<StudentCourseSubmission> studentSubmissions;
+    @Builder.Default
+    private Set<Event> events = new java.util.HashSet<>();
+
+    @OneToMany(mappedBy = "courseSeries", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<StudentCourseSubmission> studentSubmissions = new java.util.HashSet<>();
+
+    @ManyToMany
+    @JoinTable(
+        name = "course_series_study_group",
+        joinColumns = @JoinColumn(name = "course_series_id"),
+        inverseJoinColumns = @JoinColumn(name = "study_group_id")
+    )
+    @Builder.Default
+    private Set<StudyGroup> studyGroups = new java.util.HashSet<>();
 }

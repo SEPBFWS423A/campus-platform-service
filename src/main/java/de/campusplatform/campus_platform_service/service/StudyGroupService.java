@@ -97,17 +97,47 @@ public class StudyGroupService {
                     return new AdminGroupResponse(
                             group.getId(),
                             group.getName(),
+                            group.getSpecialization().getCourseOfStudy().getId(),
                             group.getSpecialization().getCourseOfStudy().getName(),
+                            group.getSpecialization().getId(),
                             group.getSpecialization().getName(),
                             members.size(),
+                            group.getStartYear(),
+                            group.getStartQuartal(),
                             members
                     );
                 })
                 .collect(Collectors.toList());
     }
 
+    private AdminGroupResponse mapToResponse(StudyGroup group) {
+        List<AdminGroupResponse.GroupMemberDTO> members = (group.getMemberships() != null ? group.getMemberships() : new java.util.HashSet<StudyGroupMembership>())
+                .stream()
+                .map(m -> new AdminGroupResponse.GroupMemberDTO(
+                        m.getStudent().getAppUser().getId(),
+                        m.getStudent().getStudentNumber(),
+                        m.getStudent().getAppUser().getTitle(),
+                        m.getStudent().getAppUser().getFirstName(),
+                        m.getStudent().getAppUser().getLastName()
+                ))
+                .collect(Collectors.toList());
+
+        return new AdminGroupResponse(
+                group.getId(),
+                group.getName(),
+                group.getSpecialization().getCourseOfStudy().getId(),
+                group.getSpecialization().getCourseOfStudy().getName(),
+                group.getSpecialization().getId(),
+                group.getSpecialization().getName(),
+                members.size(),
+                group.getStartYear(),
+                group.getStartQuartal(),
+                members
+        );
+    }
+
     @Transactional
-    public void createGroup(StudyGroupRequest request) {
+    public AdminGroupResponse createGroup(StudyGroupRequest request) {
         if (studyGroupRepository.findByName(request.name()).isPresent()) {
             throw new AppException("error.group.alreadyExists");
         }
@@ -118,8 +148,44 @@ public class StudyGroupService {
         StudyGroup group = StudyGroup.builder()
                 .name(request.name())
                 .specialization(specialization)
+                .startYear(request.startYear())
+                .startQuartal(request.startQuartal())
                 .build();
 
-        studyGroupRepository.save(group);
+        StudyGroup saved = studyGroupRepository.save(group);
+        return mapToResponse(saved);
+    }
+
+    @Transactional
+    public AdminGroupResponse updateGroup(Long id, StudyGroupRequest request) {
+        StudyGroup group = studyGroupRepository.findById(id)
+                .orElseThrow(() -> new AppException("error.group.notFound"));
+
+        if (!group.getName().equals(request.name()) && studyGroupRepository.findByName(request.name()).isPresent()) {
+            throw new AppException("error.group.alreadyExists");
+        }
+
+        Specialization specialization = specializationRepository.findById(request.specializationId())
+                .orElseThrow(() -> new AppException("error.specialization.notFound"));
+
+        group.setName(request.name());
+        group.setSpecialization(specialization);
+        group.setStartYear(request.startYear());
+        group.setStartQuartal(request.startQuartal());
+        StudyGroup saved = studyGroupRepository.save(group);
+        return mapToResponse(saved);
+    }
+
+    @Transactional
+    public void deleteGroup(Long id) {
+        if (!studyGroupRepository.existsById(id)) {
+            throw new AppException("error.group.notFound");
+        }
+        try {
+            studyGroupRepository.deleteById(id);
+            studyGroupRepository.flush(); // Force flush to catch constraint violations early
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new AppException("error.group.referenced");
+        }
     }
 }
