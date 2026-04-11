@@ -92,12 +92,6 @@ public class CourseSeriesService {
                 if (examType.getCategory() == ExamCategory.SUBMISSION) {
                     // SUBMISSION types initialize immediately upon ACTIVE
                     studentSubmissionService.initializeSubmissionsForCourseSeries(saved.getId());
-                } else if (examType.getCategory() == ExamCategory.WRITTEN) {
-                    // WRITTEN types still require a KLAUSUR event
-                    boolean hasKlausur = eventRepository.existsByCourseSeriesIdAndEventType(saved.getId(), EventType.KLAUSUR);
-                    if (hasKlausur) {
-                        studentSubmissionService.initializeSubmissionsForCourseSeries(saved.getId());
-                    }
                 }
             }
         }
