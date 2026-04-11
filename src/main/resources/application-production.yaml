@@ -15,8 +15,11 @@ app:
       email: ${LECTURER_EMAIL}
       password: ${LECTURER_PASSWORD}
     student:
-      email: ${STUDENT_EMAIL}
-      password: ${STUDENT_PASSWORD}
+      email: ${STUDENT_EMAIL_1}
+      password: ${STUDENT_PASSWORD_1}
+    student2:
+      email: ${STUDENT_EMAIL_2}
+      password: ${STUDENT_PASSWORD_2}
   resend:
     api:
       key: ${RESEND_API_KEY}

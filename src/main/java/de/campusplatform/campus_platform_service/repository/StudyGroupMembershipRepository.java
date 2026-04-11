@@ -12,6 +12,7 @@ import java.util.List;
 public interface StudyGroupMembershipRepository extends JpaRepository<StudyGroupMembership, Long> {
     List<StudyGroupMembership> findByStudentUserId(Long studentUserId);
     List<StudyGroupMembership> findByStudyGroupId(Long studyGroupId);
+    java.util.Optional<StudyGroupMembership> findByStudentUserIdAndStudyGroupId(Long studentUserId, Long studyGroupId);
     java.util.Optional<StudyGroupMembership> findByStudentAndStudyGroup(StudentProfile student, StudyGroup studyGroup);
     boolean existsByStudentAndStudyGroup(StudentProfile student, StudyGroup studyGroup);
 }
