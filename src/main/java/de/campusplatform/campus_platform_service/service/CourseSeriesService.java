@@ -9,7 +9,6 @@ import de.campusplatform.campus_platform_service.enums.Role;
 import de.campusplatform.campus_platform_service.model.AppUser;
 import de.campusplatform.campus_platform_service.model.CourseSeries;
 import de.campusplatform.campus_platform_service.model.ExamType;
-import de.campusplatform.campus_platform_service.enums.ExamCategory;
 import de.campusplatform.campus_platform_service.model.Module;
 import de.campusplatform.campus_platform_service.model.StudyGroup;
 import de.campusplatform.campus_platform_service.repository.AppUserRepository;
@@ -89,7 +88,7 @@ public class CourseSeriesService {
             }
 
             if (examType != null) {
-                if (examType.getCategory() == ExamCategory.SUBMISSION) {
+                if (examType.isSubmission()) {
                     // SUBMISSION types initialize immediately upon ACTIVE
                     studentSubmissionService.initializeSubmissionsForCourseSeries(saved.getId());
                 }

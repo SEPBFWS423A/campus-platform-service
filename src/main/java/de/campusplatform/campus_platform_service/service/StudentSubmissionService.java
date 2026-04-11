@@ -12,7 +12,6 @@ import de.campusplatform.campus_platform_service.model.StudentCourseSubmission;
 import de.campusplatform.campus_platform_service.model.StudyGroup;
 import de.campusplatform.campus_platform_service.model.SubmissionDocument;
 import de.campusplatform.campus_platform_service.model.ExamType;
-import de.campusplatform.campus_platform_service.enums.ExamCategory;
 import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 import de.campusplatform.campus_platform_service.repository.StudentCourseSubmissionRepository;
 import de.campusplatform.campus_platform_service.repository.SubmissionDocumentRepository;
@@ -114,7 +113,7 @@ public class StudentSubmissionService {
         }
 
         // If it's a SUBMISSION type, we never cleanup based on Klausur events
-        if (examType != null && examType.getCategory() == ExamCategory.SUBMISSION) {
+        if (examType != null && examType.isSubmission()) {
             return;
         }
 

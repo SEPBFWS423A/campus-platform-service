@@ -75,7 +75,7 @@ public class LecturerService {
                 cs.getModule().getName(),
                 studyGroupNames,
                 cs.getSelectedExamType() != null ? cs.getSelectedExamType().getNameDe() : null,
-                cs.getSelectedExamType() != null ? cs.getSelectedExamType().getCategory() : null,
+                cs.getSelectedExamType() != null ? cs.getSelectedExamType().isSubmission() : false,
                 resolveEffectiveStatus(cs),
                 examFileName,
                 solutionFileName,
@@ -95,14 +95,14 @@ public class LecturerService {
         LocalDateTime now = LocalDateTime.now();
 
         // 1. Check for Submission Exams
-        if (cs.getSelectedExamType() != null && cs.getSelectedExamType().getCategory() == de.campusplatform.campus_platform_service.enums.ExamCategory.SUBMISSION) {
+        if (cs.getSelectedExamType() != null && cs.getSelectedExamType().isSubmission()) {
             if (cs.getSubmissionDeadline() != null && cs.getSubmissionDeadline().isBefore(now)) {
                 return ExamStatus.GRADING;
             }
         }
 
         // 2. Check for Written Exams
-        if (cs.getSelectedExamType() != null && cs.getSelectedExamType().getCategory() == de.campusplatform.campus_platform_service.enums.ExamCategory.WRITTEN) {
+        if (cs.getSelectedExamType() != null && !cs.getSelectedExamType().isSubmission()) {
              boolean allEventsPassed = !cs.getEvents().isEmpty() && cs.getEvents().stream()
                      .allMatch(e -> {
                          LocalDateTime end = e.getStartTime() != null && e.getDurationMinutes() != null 
@@ -124,7 +124,7 @@ public class LecturerService {
         CourseSeries cs = courseSeriesRepository.findById(seriesId)
                 .orElseThrow(() -> new AppException("error.courseSeries.notFound"));
         
-        if (cs.getSelectedExamType() == null || cs.getSelectedExamType().getCategory() != de.campusplatform.campus_platform_service.enums.ExamCategory.WRITTEN) {
+        if (cs.getSelectedExamType() == null || cs.getSelectedExamType().isSubmission()) {
             throw new AppException("Only written exams support material uploads");
         }
 

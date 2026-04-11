@@ -1,7 +1,6 @@
 package de.campusplatform.campus_platform_service.dto;
 
 import de.campusplatform.campus_platform_service.enums.ExamStatus;
-import de.campusplatform.campus_platform_service.enums.ExamCategory;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -11,7 +10,7 @@ public record LecturerCourseResponse(
         String moduleName,
         List<String> studyGroupNames,
         String examTypeName,
-        ExamCategory examCategory,
+        boolean isSubmission,
         ExamStatus examStatus,
         String examFileName,
         String solutionFileName,

@@ -57,6 +57,15 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
+        // Sanity check/Migration for existing data: 
+        // Ensure RF and SA are marked as submission types if they weren't already
+        examTypeRepository.findAll().forEach(et -> {
+            if (("RF".equals(et.getType()) || "SA".equals(et.getType())) && !et.isSubmission()) {
+                et.setSubmission(true);
+                examTypeRepository.save(et);
+            }
+        });
+
         if (examTypeRepository.count() == 0) {
             InstitutionInfo glCampus = institutionRepository.save(InstitutionInfo.builder()
                     .universityName("CampusPlatform")
@@ -72,7 +81,7 @@ public class DataInitializer implements CommandLineRunner {
 
             ExamType kl = examTypeRepository.save(ExamType.builder()
                     .type("KL")
-                    .category(ExamCategory.WRITTEN)
+                    .submission(false)
                     .nameDe("Klausur")
                     .nameEn("Written Exam")
                     .shortDe("KL")
@@ -81,7 +90,7 @@ public class DataInitializer implements CommandLineRunner {
 
             ExamType rf = examTypeRepository.save(ExamType.builder()
                     .type("RF")
-                    .category(ExamCategory.SUBMISSION)
+                    .submission(true)
                     .nameDe("Referat")
                     .nameEn("Presentation")
                     .shortDe("RF")
@@ -90,7 +99,7 @@ public class DataInitializer implements CommandLineRunner {
 
             ExamType sa = examTypeRepository.save(ExamType.builder()
                     .type("SA")
-                    .category(ExamCategory.SUBMISSION)
+                    .submission(true)
                     .nameDe("Studienarbeit")
                     .nameEn("Term Paper")
                     .shortDe("SA")
@@ -422,7 +431,7 @@ public class DataInitializer implements CommandLineRunner {
                     ExamType type = series.getSelectedExamType();
                     if (type == null && series.getModule() != null) type = series.getModule().getPreferredExamType();
                     
-                    if (series.getStatus() != CourseStatus.PLANNED && type != null && type.getCategory() == ExamCategory.SUBMISSION) {
+                    if (series.getStatus() != CourseStatus.PLANNED && type != null && type.isSubmission()) {
                         studentSubmissionService.initializeSubmissionsForCourseSeries(series.getId());
                     }
                 }

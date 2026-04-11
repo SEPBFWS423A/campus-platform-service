@@ -35,7 +35,8 @@ public class ModuleService {
                                 type.getNameDe(), 
                                 type.getNameEn(), 
                                 type.getShortDe(), 
-                                type.getShortEn()))
+                                type.getShortEn(),
+                                type.isSubmission()))
                             .collect(Collectors.toList());
 
                     List<AdminModuleResponse.LecturerDTO> lecturers = module.getQualifiedLecturers().stream()

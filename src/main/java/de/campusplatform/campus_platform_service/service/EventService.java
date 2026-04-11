@@ -10,7 +10,6 @@ import de.campusplatform.campus_platform_service.repository.CourseSeriesReposito
 import de.campusplatform.campus_platform_service.repository.EventRepository;
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
 import de.campusplatform.campus_platform_service.enums.EventType;
-import de.campusplatform.campus_platform_service.enums.ExamCategory;
 import de.campusplatform.campus_platform_service.model.ExamType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,7 +81,7 @@ public class EventService {
 
         if (saved.getEventType() == EventType.KLAUSUR) {
             // No longer doing anything special here for WRITTEN exams
-        } else if (examType == null || examType.getCategory() == ExamCategory.WRITTEN) {
+        } else if (examType == null || !examType.isSubmission()) {
             // In case the type was changed FROM KLAUSUR to something else for WRITTEN exams
             studentSubmissionService.cleanupSubmissionsIfNoKlausurExists(saved.getCourseSeries().getId());
         }
