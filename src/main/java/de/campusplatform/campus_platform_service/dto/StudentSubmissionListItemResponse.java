@@ -14,10 +14,14 @@ public record StudentSubmissionListItemResponse(
         SubmissionStatus status,
         LocalDateTime submissionStartDate,
         LocalDateTime submissionDeadline,
+        LocalDateTime effectiveSubmissionDeadline,
+        LocalDateTime individualSubmissionDeadline,
+        boolean hasIndividualDeadline,
         boolean hasDocuments,
         boolean missingDocuments,
         boolean editable,
         boolean overdue,
         Double grade,
         Double points
-) {}
+) {
+}
