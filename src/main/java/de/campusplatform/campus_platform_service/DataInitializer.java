@@ -381,7 +381,7 @@ public class DataInitializer implements CommandLineRunner {
 
                             eventRepository.save(Event.builder()
                                     .courseSeries(series)
-                                    .room(room)
+                                    .rooms(Set.of(room))
                                     .name(series.getModule().getName() + " (" + (i + 1) + ")")
                                     .eventType(type)
                                     .startTime(startTime)

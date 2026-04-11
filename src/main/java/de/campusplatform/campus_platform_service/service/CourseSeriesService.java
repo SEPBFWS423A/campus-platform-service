@@ -52,6 +52,7 @@ public class CourseSeriesService {
     }
 
     public AdminCourseSeriesResponse createCourseSeries(CourseSeriesRequest request) {
+        validateStudyGroups(request.moduleId(), request.studyGroupIds(), null);
         CourseSeries courseSeries = new CourseSeries();
         mapRequestToEntity(request, courseSeries);
         CourseSeries saved = courseSeriesRepository.save(courseSeries);
@@ -62,6 +63,7 @@ public class CourseSeriesService {
         CourseSeries courseSeries = courseSeriesRepository.findById(id)
                 .orElseThrow(() -> new AppException("Course Series not found"));
         
+        validateStudyGroups(request.moduleId(), request.studyGroupIds(), id);
         mapRequestToEntity(request, courseSeries);
         CourseSeries saved = courseSeriesRepository.save(courseSeries);
         return mapToAdminResponse(saved);
@@ -128,6 +130,18 @@ public class CourseSeriesService {
         } else {
             if (entity.getStudyGroups() != null) {
                 entity.getStudyGroups().clear();
+            }
+        }
+    }
+
+    private void validateStudyGroups(Long moduleId, List<Long> studyGroupIds, Long currentSeriesId) {
+        if (studyGroupIds == null || studyGroupIds.isEmpty()) return;
+
+        List<CourseSeries> conflictingSeries = courseSeriesRepository.findDistinctByModuleIdAndStudyGroups_IdIn(moduleId, studyGroupIds);
+
+        for (CourseSeries series : conflictingSeries) {
+            if (currentSeriesId == null || !series.getId().equals(currentSeriesId)) {
+                throw new AppException("error.courseSeries.studyGroupAlreadyAssigned");
             }
         }
     }

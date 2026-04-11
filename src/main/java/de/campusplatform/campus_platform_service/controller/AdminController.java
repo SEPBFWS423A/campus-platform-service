@@ -110,8 +110,10 @@ public class AdminController {
     public ResponseEntity<List<Room>> getAvailableRooms(
             @RequestParam(required = false) LocalDateTime startTime,
             @RequestParam(required = false) Integer durationMinutes,
-            @RequestParam(required = false) Long excludeEventId) {
-        return ResponseEntity.ok(eventService.getAvailableRooms(startTime, durationMinutes, excludeEventId));
+            @RequestParam(required = false) Long excludeEventId,
+            @RequestParam(required = false) Long seriesId,
+            @RequestParam(required = false) String eventType) {
+        return ResponseEntity.ok(eventService.getAvailableRooms(startTime, durationMinutes, excludeEventId, seriesId, eventType));
     }
 
     @PostMapping("/rooms")
@@ -392,6 +394,11 @@ public class AdminController {
     @PostMapping("/course-series/{seriesId}/events")
     public ResponseEntity<AdminEventResponse> createEvent(@PathVariable Long seriesId, @RequestBody EventRequest request) {
         return ResponseEntity.ok(eventService.createEvent(seriesId, request));
+    }
+
+    @PostMapping("/course-series/{seriesId}/fast-add-event")
+    public ResponseEntity<AdminEventResponse> fastAddEvent(@PathVariable Long seriesId) {
+        return ResponseEntity.ok(eventService.fastAddEvent(seriesId));
     }
 
     @PutMapping("/events/{eventId}")

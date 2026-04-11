@@ -4,9 +4,9 @@ import de.campusplatform.campus_platform_service.enums.EventType;
 import java.time.LocalDateTime;
 
 public record EventRequest(
-        Long roomId,
+        java.util.List<Long> roomIds,
         String name,
         EventType eventType,
-        LocalDateTime startTime,
+        java.time.LocalDateTime startTime,
         Integer durationMinutes
 ) {}
