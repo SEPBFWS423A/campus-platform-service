@@ -57,4 +57,9 @@ public class LecturerController {
     public ResponseEntity<StudentSubmissionResponse> applySingleGrade(@PathVariable Long id, @RequestBody SingleGradeRequest item) {
         return ResponseEntity.ok(lecturerService.applySingleGrade(id, item));
     }
+
+    @GetMapping("/course-series/{id}/student-submissions/{studentId}/download")
+    public ResponseEntity<SubmissionDocumentDownloadData> downloadStudentSubmission(@PathVariable Long id, @PathVariable Long studentId) {
+        return ResponseEntity.ok(lecturerService.getStudentSubmissionDocument(id, studentId));
+    }
 }
