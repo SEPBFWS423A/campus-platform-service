@@ -417,9 +417,12 @@ public class DataInitializer implements CommandLineRunner {
                     }
                 }
 
-                // Initialize submissions for all ACTIVE/GRADING series for all students in assigned groups
+                // Initialize submissions only for SUBMISSION categories when ACTIVE/GRADING
                 for (CourseSeries series : savedSeries) {
-                    if (series.getStatus() != CourseStatus.PLANNED) {
+                    ExamType type = series.getSelectedExamType();
+                    if (type == null && series.getModule() != null) type = series.getModule().getPreferredExamType();
+                    
+                    if (series.getStatus() != CourseStatus.PLANNED && type != null && type.getCategory() == ExamCategory.SUBMISSION) {
                         studentSubmissionService.initializeSubmissionsForCourseSeries(series.getId());
                     }
                 }

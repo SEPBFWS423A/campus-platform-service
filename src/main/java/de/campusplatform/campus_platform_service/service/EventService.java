@@ -61,18 +61,6 @@ public class EventService {
         
         Event saved = eventRepository.save(event);
         
-        ExamType examType = series.getSelectedExamType();
-        if (examType == null && series.getModule() != null) {
-            examType = series.getModule().getPreferredExamType();
-        }
-
-        // Only trigger initialization for KLAUSUR events if it's a WRITTEN exam
-        if (saved.getEventType() == EventType.KLAUSUR 
-            && series.getStatus() != de.campusplatform.campus_platform_service.enums.CourseStatus.PLANNED
-            && (examType == null || examType.getCategory() == ExamCategory.WRITTEN)) {
-            studentSubmissionService.initializeSubmissionsForCourseSeries(seriesId);
-        }
-        
         return mapToAdminResponse(saved);
     }
 
@@ -93,11 +81,7 @@ public class EventService {
         }
 
         if (saved.getEventType() == EventType.KLAUSUR) {
-            if (saved.getCourseSeries() != null 
-                && saved.getCourseSeries().getStatus() != de.campusplatform.campus_platform_service.enums.CourseStatus.PLANNED
-                && (examType == null || examType.getCategory() == ExamCategory.WRITTEN)) {
-                studentSubmissionService.initializeSubmissionsForCourseSeries(saved.getCourseSeries().getId());
-            }
+            // No longer doing anything special here for WRITTEN exams
         } else if (examType == null || examType.getCategory() == ExamCategory.WRITTEN) {
             // In case the type was changed FROM KLAUSUR to something else for WRITTEN exams
             studentSubmissionService.cleanupSubmissionsIfNoKlausurExists(saved.getCourseSeries().getId());
