@@ -55,7 +55,7 @@ public class StudentSubmissionService {
         return submissionRepository.findByStudentId(student.getId())
                 .stream()
                 .sorted(Comparator.comparing(
-                        (StudentCourseSubmission s) -> s.getCourseSeries().getSubmissionDeadline(),
+                        this::resolveEffectiveDeadline,
                         Comparator.nullsLast(Comparator.naturalOrder())
                 ))
                 .map(this::toListItemResponse)
@@ -194,16 +194,35 @@ public class StudentSubmissionService {
             return false;
         }
 
-        return courseSeries.getSubmissionDeadline() == null || !now.isAfter(courseSeries.getSubmissionDeadline());
+        LocalDateTime effectiveDeadline = resolveEffectiveDeadline(submission);
+
+        if (effectiveDeadline == null) {
+            return true;
+        }
+
+        if (!now.isAfter(effectiveDeadline)) {
+            return true;
+        }
+
+        return submission.isLateSubmissionAllowed();
     }
 
     private boolean isOverdue(StudentCourseSubmission submission) {
-        CourseSeries courseSeries = submission.getCourseSeries();
-        LocalDateTime deadline = courseSeries.getSubmissionDeadline();
+        if (submission.getStatus() != SubmissionStatus.PENDING) {
+            return false;
+        }
 
-        return deadline != null
-                && LocalDateTime.now().isAfter(deadline)
-                && submission.getStatus() == SubmissionStatus.PENDING;
+        LocalDateTime effectiveDeadline = resolveEffectiveDeadline(submission);
+
+        if (effectiveDeadline == null) {
+            return false;
+        }
+
+        if (!LocalDateTime.now().isAfter(effectiveDeadline)) {
+            return false;
+        }
+
+        return !submission.isLateSubmissionAllowed();
     }
 
     private void validateUploadRequest(UploadSubmissionDocumentRequest request) {
@@ -242,6 +261,8 @@ public class StudentSubmissionService {
 
     private StudentSubmissionListItemResponse toListItemResponse(StudentCourseSubmission submission) {
         boolean hasDocuments = submission.getDocuments() != null && !submission.getDocuments().isEmpty();
+        LocalDateTime effectiveDeadline = resolveEffectiveDeadline(submission);
+        boolean hasIndividualDeadline = hasIndividualDeadline(submission);
 
         return new StudentSubmissionListItemResponse(
                 submission.getId(),
@@ -254,6 +275,9 @@ public class StudentSubmissionService {
                 submission.getStatus(),
                 submission.getCourseSeries().getSubmissionStartDate(),
                 submission.getCourseSeries().getSubmissionDeadline(),
+                effectiveDeadline,
+                submission.getExtendedUntil(),
+                hasIndividualDeadline,
                 hasDocuments,
                 !hasDocuments,
                 isEditable(submission),
@@ -265,6 +289,8 @@ public class StudentSubmissionService {
 
     private StudentSubmissionDetailResponse toDetailResponse(StudentCourseSubmission submission) {
         boolean hasDocuments = submission.getDocuments() != null && !submission.getDocuments().isEmpty();
+        LocalDateTime effectiveDeadline = resolveEffectiveDeadline(submission);
+        boolean hasIndividualDeadline = hasIndividualDeadline(submission);
 
         List<SubmissionDocumentResponse> documents = submission.getDocuments() == null
                 ? List.of()
@@ -285,6 +311,9 @@ public class StudentSubmissionService {
                 submission.getStatus(),
                 submission.getCourseSeries().getSubmissionStartDate(),
                 submission.getCourseSeries().getSubmissionDeadline(),
+                effectiveDeadline,
+                submission.getExtendedUntil(),
+                hasIndividualDeadline,
                 submission.getSubmissionDate(),
                 hasDocuments,
                 !hasDocuments,
@@ -324,5 +353,16 @@ public class StudentSubmissionService {
                 .map(StudyGroup::getName)
                 .sorted()
                 .toList();
+    }
+
+    private LocalDateTime resolveEffectiveDeadline(StudentCourseSubmission submission) {
+        if (submission.getExtendedUntil() != null) {
+            return submission.getExtendedUntil();
+        }
+        return submission.getCourseSeries().getSubmissionDeadline();
+    }
+
+    private boolean hasIndividualDeadline(StudentCourseSubmission submission) {
+        return submission.getExtendedUntil() != null;
     }
 }

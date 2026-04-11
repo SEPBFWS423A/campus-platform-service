@@ -14,6 +14,9 @@ public record StudentSubmissionDetailResponse(
         SubmissionStatus status,
         LocalDateTime submissionStartDate,
         LocalDateTime submissionDeadline,
+        LocalDateTime effectiveSubmissionDeadline,
+        LocalDateTime individualSubmissionDeadline,
+        boolean hasIndividualDeadline,
         LocalDateTime submissionDate,
         boolean hasDocuments,
         boolean missingDocuments,
@@ -23,4 +26,5 @@ public record StudentSubmissionDetailResponse(
         Double points,
         String feedback,
         List<SubmissionDocumentResponse> documents
-) {}
+) {
+}
