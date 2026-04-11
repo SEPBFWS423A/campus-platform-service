@@ -53,8 +53,12 @@ public class LecturerService {
                         e.getStartTime() != null && e.getDurationMinutes() != null 
                             ? e.getStartTime().plusMinutes(e.getDurationMinutes()) 
                             : null,
-                        e.getRoom() != null ? e.getRoom().getName() : null,
-                        e.getRoom() != null ? e.getRoom().getExamSeats() : null
+                        e.getRooms() != null && !e.getRooms().isEmpty() 
+                            ? e.getRooms().stream().map(de.campusplatform.campus_platform_service.model.Room::getName).collect(Collectors.joining(", ")) 
+                            : null,
+                        e.getRooms() != null && !e.getRooms().isEmpty() 
+                            ? e.getRooms().stream().mapToInt(de.campusplatform.campus_platform_service.model.Room::getExamSeats).sum() 
+                            : null
                 ))
                 .collect(Collectors.toList());
 
