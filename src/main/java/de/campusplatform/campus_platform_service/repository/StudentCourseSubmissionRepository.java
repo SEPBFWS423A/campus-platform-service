@@ -20,5 +20,8 @@ public interface StudentCourseSubmissionRepository extends JpaRepository<Student
 
     @EntityGraph(attributePaths = {"documents", "courseSeries", "courseSeries.selectedExamType"})
     Optional<StudentCourseSubmission> findByIdAndStudentId(Long id, Long studentId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT cs FROM CourseSeries cs LEFT JOIN FETCH cs.studyGroups WHERE cs.id = :id")
+    Optional<de.campusplatform.campus_platform_service.model.CourseSeries> findCourseSeriesWithGroupsById(Long id);
 }
 

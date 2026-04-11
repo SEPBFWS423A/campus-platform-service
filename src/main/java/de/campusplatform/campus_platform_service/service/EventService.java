@@ -9,7 +9,11 @@ import de.campusplatform.campus_platform_service.model.Room;
 import de.campusplatform.campus_platform_service.repository.CourseSeriesRepository;
 import de.campusplatform.campus_platform_service.repository.EventRepository;
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
+import de.campusplatform.campus_platform_service.enums.EventType;
+import de.campusplatform.campus_platform_service.enums.ExamCategory;
+import de.campusplatform.campus_platform_service.model.ExamType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,11 +25,16 @@ public class EventService {
     private final EventRepository eventRepository;
     private final CourseSeriesRepository courseSeriesRepository;
     private final RoomRepository roomRepository;
+    private final StudentSubmissionService studentSubmissionService;
 
-    public EventService(EventRepository eventRepository, CourseSeriesRepository courseSeriesRepository, RoomRepository roomRepository) {
+    public EventService(EventRepository eventRepository, 
+                        CourseSeriesRepository courseSeriesRepository, 
+                        RoomRepository roomRepository,
+                        StudentSubmissionService studentSubmissionService) {
         this.eventRepository = eventRepository;
         this.courseSeriesRepository = courseSeriesRepository;
         this.roomRepository = roomRepository;
+        this.studentSubmissionService = studentSubmissionService;
     }
 
     public List<AdminEventResponse> getEventsForSeries(Long seriesId) {
@@ -50,12 +59,24 @@ public class EventService {
         event.setCourseSeries(series);
         mapRequestToEntity(request, event);
         
-        validateNoCollision(event, null);
-        
         Event saved = eventRepository.save(event);
+        
+        ExamType examType = series.getSelectedExamType();
+        if (examType == null && series.getModule() != null) {
+            examType = series.getModule().getPreferredExamType();
+        }
+
+        // Only trigger initialization for KLAUSUR events if it's a WRITTEN exam
+        if (saved.getEventType() == EventType.KLAUSUR 
+            && series.getStatus() != de.campusplatform.campus_platform_service.enums.CourseStatus.PLANNED
+            && (examType == null || examType.getCategory() == ExamCategory.WRITTEN)) {
+            studentSubmissionService.initializeSubmissionsForCourseSeries(seriesId);
+        }
+        
         return mapToAdminResponse(saved);
     }
 
+    @Transactional
     public AdminEventResponse updateEvent(Long eventId, EventRequest request) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new AppException("Event not found"));
@@ -65,14 +86,39 @@ public class EventService {
         validateNoCollision(event, eventId);
         
         Event saved = eventRepository.save(event);
+        
+        ExamType examType = saved.getCourseSeries().getSelectedExamType();
+        if (examType == null && saved.getCourseSeries().getModule() != null) {
+            examType = saved.getCourseSeries().getModule().getPreferredExamType();
+        }
+
+        if (saved.getEventType() == EventType.KLAUSUR) {
+            if (saved.getCourseSeries() != null 
+                && saved.getCourseSeries().getStatus() != de.campusplatform.campus_platform_service.enums.CourseStatus.PLANNED
+                && (examType == null || examType.getCategory() == ExamCategory.WRITTEN)) {
+                studentSubmissionService.initializeSubmissionsForCourseSeries(saved.getCourseSeries().getId());
+            }
+        } else if (examType == null || examType.getCategory() == ExamCategory.WRITTEN) {
+            // In case the type was changed FROM KLAUSUR to something else for WRITTEN exams
+            studentSubmissionService.cleanupSubmissionsIfNoKlausurExists(saved.getCourseSeries().getId());
+        }
+        
         return mapToAdminResponse(saved);
     }
 
+    @Transactional
     public void deleteEvent(Long eventId) {
-        if (!eventRepository.existsById(eventId)) {
-            throw new AppException("Event not found");
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new AppException("Event not found"));
+        
+        Long seriesId = event.getCourseSeries() != null ? event.getCourseSeries().getId() : null;
+        EventType type = event.getEventType();
+        
+        eventRepository.delete(event);
+        
+        if (type == EventType.KLAUSUR && seriesId != null) {
+            studentSubmissionService.cleanupSubmissionsIfNoKlausurExists(seriesId);
         }
-        eventRepository.deleteById(eventId);
     }
 
     private void mapRequestToEntity(EventRequest request, Event entity) {

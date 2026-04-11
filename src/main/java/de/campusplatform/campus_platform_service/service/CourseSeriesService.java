@@ -9,6 +9,7 @@ import de.campusplatform.campus_platform_service.enums.Role;
 import de.campusplatform.campus_platform_service.model.AppUser;
 import de.campusplatform.campus_platform_service.model.CourseSeries;
 import de.campusplatform.campus_platform_service.model.ExamType;
+import de.campusplatform.campus_platform_service.enums.ExamCategory;
 import de.campusplatform.campus_platform_service.model.Module;
 import de.campusplatform.campus_platform_service.model.StudyGroup;
 import de.campusplatform.campus_platform_service.repository.AppUserRepository;
@@ -16,8 +17,11 @@ import de.campusplatform.campus_platform_service.repository.CourseSeriesReposito
 import de.campusplatform.campus_platform_service.repository.ExamTypeRepository;
 import de.campusplatform.campus_platform_service.repository.ModuleRepository;
 import de.campusplatform.campus_platform_service.repository.StudyGroupRepository;
+import de.campusplatform.campus_platform_service.repository.EventRepository;
+import de.campusplatform.campus_platform_service.enums.EventType;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,13 +34,23 @@ public class CourseSeriesService {
     private final AppUserRepository appUserRepository;
     private final ExamTypeRepository examTypeRepository;
     private final StudyGroupRepository studyGroupRepository;
+    private final StudentSubmissionService studentSubmissionService;
+    private final EventRepository eventRepository;
 
-    public CourseSeriesService(CourseSeriesRepository courseSeriesRepository, ModuleRepository moduleRepository, AppUserRepository appUserRepository, ExamTypeRepository examTypeRepository, StudyGroupRepository studyGroupRepository) {
+    public CourseSeriesService(CourseSeriesRepository courseSeriesRepository, 
+                               ModuleRepository moduleRepository, 
+                               AppUserRepository appUserRepository, 
+                               ExamTypeRepository examTypeRepository, 
+                               StudyGroupRepository studyGroupRepository,
+                               StudentSubmissionService studentSubmissionService,
+                               EventRepository eventRepository) {
         this.courseSeriesRepository = courseSeriesRepository;
         this.moduleRepository = moduleRepository;
         this.appUserRepository = appUserRepository;
         this.examTypeRepository = examTypeRepository;
         this.studyGroupRepository = studyGroupRepository;
+        this.studentSubmissionService = studentSubmissionService;
+        this.eventRepository = eventRepository;
     }
 
     public List<AdminCourseSeriesResponse> getAllCourseSeries() {
@@ -62,8 +76,32 @@ public class CourseSeriesService {
         CourseSeries courseSeries = courseSeriesRepository.findById(id)
                 .orElseThrow(() -> new AppException("Course Series not found"));
         
+        CourseStatus oldStatus = courseSeries.getStatus();
         mapRequestToEntity(request, courseSeries);
         CourseSeries saved = courseSeriesRepository.save(courseSeries);
+        
+        // Handle student submission initialization when moving to ACTIVE
+        if (oldStatus == CourseStatus.PLANNED && saved.getStatus() == CourseStatus.ACTIVE) {
+            ExamType examType = saved.getSelectedExamType();
+            if (examType == null) {
+                // Fallback to module's preferred exam type if not set on series
+                examType = saved.getModule().getPreferredExamType();
+            }
+
+            if (examType != null) {
+                if (examType.getCategory() == ExamCategory.SUBMISSION) {
+                    // SUBMISSION types initialize immediately upon ACTIVE
+                    studentSubmissionService.initializeSubmissionsForCourseSeries(saved.getId());
+                } else if (examType.getCategory() == ExamCategory.WRITTEN) {
+                    // WRITTEN types still require a KLAUSUR event
+                    boolean hasKlausur = eventRepository.existsByCourseSeriesIdAndEventType(saved.getId(), EventType.KLAUSUR);
+                    if (hasKlausur) {
+                        studentSubmissionService.initializeSubmissionsForCourseSeries(saved.getId());
+                    }
+                }
+            }
+        }
+        
         return mapToAdminResponse(saved);
     }
 
