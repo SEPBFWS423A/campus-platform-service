@@ -36,6 +36,11 @@ public class StudentCourseSubmission {
     private Double points;
     private String feedback;
 
+    private LocalDateTime extendedUntil;
+    private String extensionReason;
+    private Long extensionGrantedBy;
+    private boolean lateSubmissionAllowed;
+
     @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private Set<SubmissionDocument> documents = new HashSet<>();
