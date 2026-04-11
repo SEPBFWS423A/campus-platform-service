@@ -180,8 +180,7 @@ public class LecturerService {
                             student.getFirstName() + " " + student.getLastName(),
                             student.getStudentProfile() != null ? student.getStudentProfile().getStudentNumber() : null,
                             sub != null ? sub.getStatus() : SubmissionStatus.PENDING,
-                            sub != null ? sub.getDocumentUrl() : null,
-                            sub != null ? sub.getSubmissionDate() : null,
+                            sub != null ? resolveDocumentValue(sub) : null,                            sub != null ? sub.getSubmissionDate() : null,
                             sub != null ? sub.getGrade() : null,
                             sub != null ? sub.getPoints() : null,
                             sub != null ? sub.getFeedback() : null
@@ -266,7 +265,7 @@ public class LecturerService {
         submission.setGrade(finalGrade);
         submission.setPoints(item.points());
         submission.setFeedback(item.feedback());
-        
+
         if (submission.getStatus() == SubmissionStatus.PENDING && (finalGrade != null || item.points() != null)) {
             submission.setStatus(SubmissionStatus.GRADED);
         }
@@ -278,15 +277,30 @@ public class LecturerService {
         }
 
         return new StudentSubmissionResponse(
-            saved.getStudent().getId(),
-            saved.getStudent().getFirstName() + " " + saved.getStudent().getLastName(),
-            saved.getStudent().getStudentProfile() != null ? saved.getStudent().getStudentProfile().getStudentNumber() : null,
-            saved.getStatus(),
-            saved.getDocumentUrl(),
-            saved.getSubmissionDate(),
-            saved.getGrade(),
-            saved.getPoints(),
-            saved.getFeedback()
+                saved.getStudent().getId(),
+                saved.getStudent().getFirstName() + " " + saved.getStudent().getLastName(),
+                saved.getStudent().getStudentProfile() != null ? saved.getStudent().getStudentProfile().getStudentNumber() : null,
+                saved.getStatus(),
+                resolveDocumentValue(saved),
+                saved.getSubmissionDate(),
+                saved.getGrade(),
+                saved.getPoints(),
+                saved.getFeedback()
         );
+    }
+
+    private String resolveDocumentValue(StudentCourseSubmission submission) {
+        if (submission == null || submission.getDocuments() == null || submission.getDocuments().isEmpty()) {
+            return null;
+        }
+
+        return submission.getDocuments().stream()
+                .sorted(java.util.Comparator.comparing(
+                        SubmissionDocument::getUploadedAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())
+                ).reversed())
+                .map(SubmissionDocument::getFileName)
+                .findFirst()
+                .orElse(null);
     }
 }
