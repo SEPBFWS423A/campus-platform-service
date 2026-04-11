@@ -411,4 +411,10 @@ public class AdminController {
         eventService.deleteEvent(eventId);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/course-series/{seriesId}/auto-schedule")
+    public ResponseEntity<Void> autoSchedule(@PathVariable Long seriesId, @RequestBody AutoScheduleRequest request) {
+        eventService.autoSchedule(seriesId, request);
+        return ResponseEntity.ok().build();
+    }
 }

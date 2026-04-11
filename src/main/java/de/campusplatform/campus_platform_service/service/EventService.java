@@ -1,6 +1,7 @@
 package de.campusplatform.campus_platform_service.service;
 
 import de.campusplatform.campus_platform_service.dto.AdminEventResponse;
+import de.campusplatform.campus_platform_service.dto.AutoScheduleRequest;
 import de.campusplatform.campus_platform_service.dto.EventRequest;
 import de.campusplatform.campus_platform_service.enums.EventType;
 import de.campusplatform.campus_platform_service.exception.AppException;
@@ -16,8 +17,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
+import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -124,7 +130,7 @@ public class EventService {
         } else {
             newEvent.setName(series.getModule().getName() + " (1)");
             newEvent.setEventType(EventType.LEHRVERANSTALTUNG);
-            newEvent.setDurationMinutes(90);
+            newEvent.setDurationMinutes(195);
         }
 
         // Search for next available slot
@@ -197,17 +203,19 @@ public class EventService {
     }
 
     private boolean hasCollision(Event newEvent, LocalDateTime proposedStart) {
-        if (newEvent.getRooms() == null || newEvent.getRooms().isEmpty() || proposedStart == null || newEvent.getDurationMinutes() == null) {
+        if (proposedStart == null || newEvent.getDurationMinutes() == null) {
             return false;
         }
 
         LocalDateTime end = proposedStart.plusMinutes(newEvent.getDurationMinutes());
-        List<Long> roomIds = newEvent.getRooms().stream().map(Room::getId).collect(Collectors.toList());
 
-        // 1. Room Collision
-        List<Event> overlaps = eventRepository.findOverlappingEvents(roomIds, proposedStart, end, null);
-        if (!overlaps.isEmpty()) {
-            return true;
+        // 1. Room Collision (only if rooms are assigned)
+        if (newEvent.getRooms() != null && !newEvent.getRooms().isEmpty()) {
+            List<Long> roomIds = newEvent.getRooms().stream().map(Room::getId).collect(Collectors.toList());
+            List<Event> overlaps = eventRepository.findOverlappingEvents(roomIds, proposedStart, end, null);
+            if (!overlaps.isEmpty()) {
+                return true;
+            }
         }
 
         // 2. Lecturer Collision
@@ -232,6 +240,146 @@ public class EventService {
     }
 
     @Transactional
+    public void autoSchedule(Long seriesId, AutoScheduleRequest request) {
+        CourseSeries series = courseSeriesRepository.findById(seriesId)
+                .orElseThrow(() -> new AppException("Course Series not found"));
+        
+        int requiredMinutes = series.getModule().getRequiredTotalHours() * 60;
+        int currentMinutes = series.getEvents().stream().mapToInt(Event::getDurationMinutes).sum();
+        int deficitMinutes = requiredMinutes - currentMinutes;
+        
+        if (deficitMinutes <= 0) return;
+        
+        // 1. Identify all working days in range
+        List<LocalDate> workingDays = new ArrayList<>();
+        LocalDate current = request.startDate();
+        while (!current.isAfter(request.endDate())) {
+            if (current.getDayOfWeek() != DayOfWeek.SATURDAY && current.getDayOfWeek() != DayOfWeek.SUNDAY) {
+                workingDays.add(current);
+            }
+            current = current.plusDays(1);
+        }
+        
+        if (workingDays.isEmpty()) return;
+        
+        // 2. Prepare prioritized slots
+        record ParsedSlot(LocalTime start, LocalTime end, int duration) {}
+        List<ParsedSlot> slots = request.timeSlots().stream()
+                .map(ts -> {
+                    LocalTime s = LocalTime.parse(ts.startTime());
+                    LocalTime e = LocalTime.parse(ts.endTime());
+                    return new ParsedSlot(s, e, (int) Duration.between(s, e).toMinutes());
+                })
+                .collect(Collectors.toList());
+        
+        double avgDuration = slots.stream().mapToDouble(s -> s.duration).average().orElse(90.0);
+        int approxEventsNeeded = (int) Math.ceil((double) deficitMinutes / avgDuration);
+        double dayStep = (double) workingDays.size() / approxEventsNeeded;
+        
+        Set<LocalDate> occupiedDays = new HashSet<>();
+        List<Room> availableCandidateRooms = roomRepository.findAll();
+        int requiredSeats = calculateRequiredSeats(series);
+        int addedMinutes = 0;
+        
+        // 3. Spaced pass
+        for (int i = 0; i < approxEventsNeeded && (currentMinutes + addedMinutes) < requiredMinutes; i++) {
+            int targetIdx = (int) Math.floor(i * dayStep);
+            boolean scheduled = false;
+            
+            for (int k = 0; k < workingDays.size() && !scheduled; k++) {
+                // Search around targetIdx: +0, +1, -1, +2, -2...
+                int offset = (k % 2 == 0) ? k / 2 : -(k / 2 + 1);
+                int idx = targetIdx + offset;
+                
+                if (idx < 0 || idx >= workingDays.size()) continue;
+                
+                LocalDate date = workingDays.get(idx);
+                if (occupiedDays.contains(date)) continue;
+                
+                // Try slots in priority order
+                for (ParsedSlot slot : slots) {
+                    LocalDateTime proposedStart = date.atTime(slot.start);
+                    
+                    // a) Initial collision check (lecturer/groups)
+                    Event tempEvent = new Event();
+                    tempEvent.setCourseSeries(series);
+                    tempEvent.setDurationMinutes(slot.duration);
+                    
+                    if (!hasCollision(tempEvent, proposedStart)) {
+                        // b) Room finding
+                        Room selectedRoom = null;
+                        for (Room room : availableCandidateRooms) {
+                            if (hasCapacity(room, requiredSeats, EventType.LEHRVERANSTALTUNG) && 
+                                isRoomAvailable(room, proposedStart, slot.duration, null)) {
+                                selectedRoom = room;
+                                break;
+                            }
+                        }
+                        
+                        if (selectedRoom != null) {
+                            // Found a valid slot!
+                            Event newEvent = new Event();
+                            newEvent.setCourseSeries(series);
+                            newEvent.setName(series.getModule().getName() + " (" + (series.getEvents().size() + 1) + ")");
+                            newEvent.setEventType(EventType.LEHRVERANSTALTUNG);
+                            newEvent.setStartTime(proposedStart);
+                            newEvent.setDurationMinutes(slot.duration);
+                            newEvent.setRooms(Set.of(selectedRoom));
+                            
+                            eventRepository.save(newEvent);
+                            series.getEvents().add(newEvent); // Keep track locally for name counting and hours
+                            addedMinutes += slot.duration;
+                            occupiedDays.add(date);
+                            scheduled = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 4. Final Gap-fill (if we still need hours and have available slots on ANY day)
+        if ((currentMinutes + addedMinutes) < requiredMinutes) {
+            for (LocalDate date : workingDays) {
+                if ((currentMinutes + addedMinutes) >= requiredMinutes) break;
+                
+                for (ParsedSlot slot : slots) {
+                    if ((currentMinutes + addedMinutes) >= requiredMinutes) break;
+                    
+                    LocalDateTime proposedStart = date.atTime(slot.start);
+                    Event tempEvent = new Event();
+                    tempEvent.setCourseSeries(series);
+                    tempEvent.setDurationMinutes(slot.duration);
+                    
+                    if (!hasCollision(tempEvent, proposedStart)) {
+                        Room selectedRoom = null;
+                        for (Room room : availableCandidateRooms) {
+                            if (hasCapacity(room, requiredSeats, EventType.LEHRVERANSTALTUNG) && 
+                                isRoomAvailable(room, proposedStart, slot.duration, null)) {
+                                selectedRoom = room;
+                                break;
+                            }
+                        }
+                        
+                        if (selectedRoom != null) {
+                            Event newEvent = new Event();
+                            newEvent.setCourseSeries(series);
+                            newEvent.setName(series.getModule().getName() + " (" + (series.getEvents().size() + 1) + ")");
+                            newEvent.setEventType(EventType.LEHRVERANSTALTUNG);
+                            newEvent.setStartTime(proposedStart);
+                            newEvent.setDurationMinutes(slot.duration);
+                            newEvent.setRooms(Set.of(selectedRoom));
+                            
+                            eventRepository.save(newEvent);
+                            series.getEvents().add(newEvent);
+                            addedMinutes += slot.duration;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     public void deleteEvent(Long eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new AppException("Event not found"));
