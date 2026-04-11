@@ -30,10 +30,16 @@ public class UserInitializer implements CommandLineRunner {
     private String initialLecturerPassword;
 
     @Value("${app.initial.student.email:}")
-    private String initialStudentEmail;
+    private String initialStudent1Email;
 
     @Value("${app.initial.student.password:}")
-    private String initialStudentPassword;
+    private String initialStudent1Password;
+
+    @Value("${app.initial.student2.email:}")
+    private String initialStudent2Email;
+
+    @Value("${app.initial.student2.password:}")
+    private String initialStudent2Password;
 
     @Value("${app.defaults.theme}")
     private String defaultTheme;
@@ -59,18 +65,24 @@ public class UserInitializer implements CommandLineRunner {
             createLecturerUser();
             created = true;
         }
-        if (!initialStudentEmail.isEmpty() && !initialStudentPassword.isEmpty() && 
-                userRepository.findByEmail(initialStudentEmail).isEmpty()) {
-            createStudentUser();
+        if (!initialStudent1Email.isEmpty() && !initialStudent1Password.isEmpty() && 
+                userRepository.findByEmail(initialStudent1Email).isEmpty()) {
+            createStudentUser(initialStudent1Email, initialStudent1Password, "Student 1");
+            created = true;
+        }
+        if (!initialStudent2Email.isEmpty() && !initialStudent2Password.isEmpty() && 
+                userRepository.findByEmail(initialStudent2Email).isEmpty()) {
+            createStudentUser(initialStudent2Email, initialStudent2Password, "Student 2");
             created = true;
         }
 
         if (created) {
             System.out.println("=================================================================");
             System.out.println("   ✓ CORE SYSTEM USERS INITIALIZED");
-            System.out.println("   Admin:    " + initialAdminEmail);
-            System.out.println("   Lecturer: " + initialLecturerEmail);
-            System.out.println("   Student:  " + initialStudentEmail);
+            System.out.println("   Admin:     " + initialAdminEmail);
+            System.out.println("   Lecturer:  " + initialLecturerEmail);
+            System.out.println("   Student 1: " + initialStudent1Email);
+            System.out.println("   Student 2: " + initialStudent2Email);
             System.out.println("=================================================================");
         }
     }
@@ -105,11 +117,11 @@ public class UserInitializer implements CommandLineRunner {
         userRepository.save(lecturer);
     }
 
-    public void createStudentUser() {
+    public void createStudentUser(String email, String password, String firstName) {
         AppUser student = new AppUser();
-        student.setEmail(initialStudentEmail);
-        student.setPassword(passwordEncoder.encode(initialStudentPassword));
-        student.setFirstName("Student");
+        student.setEmail(email);
+        student.setPassword(passwordEncoder.encode(password));
+        student.setFirstName(firstName);
         student.setLastName("User");
         student.setRole(Role.STUDENT);
         student.setEnabled(true);

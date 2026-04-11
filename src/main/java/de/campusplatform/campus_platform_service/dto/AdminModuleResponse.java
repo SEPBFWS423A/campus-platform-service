@@ -20,7 +20,8 @@ public record AdminModuleResponse(
             String nameDe,
             String nameEn,
             String shortDe,
-            String shortEn
+            String shortEn,
+            boolean submission
     ) {}
 
     public record LecturerDTO(

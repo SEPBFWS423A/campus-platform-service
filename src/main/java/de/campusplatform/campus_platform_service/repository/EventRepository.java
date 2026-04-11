@@ -47,4 +47,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                               @Param("start") LocalDateTime start, 
                                               @Param("end") LocalDateTime end, 
                                               @Param("excludeId") Long excludeId);
+  
+    boolean existsByCourseSeriesIdAndEventType(Long courseSeriesId, de.campusplatform.campus_platform_service.enums.EventType eventType);
 }

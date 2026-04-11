@@ -11,9 +11,12 @@ import de.campusplatform.campus_platform_service.model.CourseSeries;
 import de.campusplatform.campus_platform_service.model.StudentCourseSubmission;
 import de.campusplatform.campus_platform_service.model.StudyGroup;
 import de.campusplatform.campus_platform_service.model.SubmissionDocument;
+import de.campusplatform.campus_platform_service.model.ExamType;
 import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 import de.campusplatform.campus_platform_service.repository.StudentCourseSubmissionRepository;
 import de.campusplatform.campus_platform_service.repository.SubmissionDocumentRepository;
+import de.campusplatform.campus_platform_service.enums.EventType;
+import de.campusplatform.campus_platform_service.enums.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -47,6 +50,7 @@ public class StudentSubmissionService {
     private final StudentCourseSubmissionRepository submissionRepository;
     private final SubmissionDocumentRepository submissionDocumentRepository;
     private final AppUserRepository appUserRepository;
+    private final de.campusplatform.campus_platform_service.repository.EventRepository eventRepository;
 
     @Transactional(readOnly = true)
     public List<StudentSubmissionListItemResponse> getMySubmissions(String username) {
@@ -54,12 +58,77 @@ public class StudentSubmissionService {
 
         return submissionRepository.findByStudentId(student.getId())
                 .stream()
+                .filter(sub -> isStudentEligibleForCourse(student, sub.getCourseSeries()))
                 .sorted(Comparator.comparing(
                         this::resolveEffectiveDeadline,
                         Comparator.nullsLast(Comparator.naturalOrder())
                 ))
                 .map(this::toListItemResponse)
                 .toList();
+    }
+
+    private boolean isStudentEligibleForCourse(AppUser student, CourseSeries series) {
+        if (series == null || series.getStudyGroups() == null) {
+            return false;
+        }
+
+        // The student should only see submissions when the CourseSeries is ACTIVE, GRADING, or COMPLETED
+        if (series.getStatus() == de.campusplatform.campus_platform_service.enums.CourseStatus.PLANNED) {
+            return false;
+        }
+        
+        // A student is eligible if they are in any of the study groups assigned to the course series
+        return series.getStudyGroups().stream()
+                .anyMatch(group -> group.getMemberships().stream()
+                        .anyMatch(m -> m.getStudent().getAppUser().getId().equals(student.getId())));
+    }
+
+    @Transactional
+    public void initializeSubmissionsForCourseSeries(Long seriesId) {
+        CourseSeries series = submissionRepository.findCourseSeriesWithGroupsById(seriesId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Kurs nicht gefunden."));
+
+        List<AppUser> students = appUserRepository.findStudentsByCourseSeriesId(seriesId);
+
+        for (AppUser student : students) {
+            if (submissionRepository.findByCourseSeriesIdAndStudentId(seriesId, student.getId()).isEmpty()) {
+                StudentCourseSubmission submission = StudentCourseSubmission.builder()
+                        .courseSeries(series)
+                        .student(student)
+                        .status(SubmissionStatus.PENDING)
+                        .build();
+                submissionRepository.save(submission);
+            }
+        }
+    }
+
+    @Transactional
+    public void cleanupSubmissionsIfNoKlausurExists(Long seriesId) {
+        CourseSeries series = submissionRepository.findCourseSeriesWithGroupsById(seriesId).orElse(null);
+        if (series == null) return;
+
+        ExamType examType = series.getSelectedExamType();
+        if (examType == null && series.getModule() != null) {
+            examType = series.getModule().getPreferredExamType();
+        }
+
+        // If it's a SUBMISSION type, we never cleanup based on Klausur events
+        if (examType != null && examType.isSubmission()) {
+            return;
+        }
+
+        // For WRITTEN (or undefined), we still require a Klausur event to keep submissions
+        boolean hasKlausur = eventRepository.existsByCourseSeriesIdAndEventType(seriesId, EventType.KLAUSUR);
+        
+        if (!hasKlausur) {
+            // Remove all submissions for this series that are still PENDING and have no documents
+            List<StudentCourseSubmission> subs = submissionRepository.findByCourseSeriesId(seriesId);
+            for (StudentCourseSubmission sub : subs) {
+                if (sub.getStatus() == SubmissionStatus.PENDING && (sub.getDocuments() == null || sub.getDocuments().isEmpty())) {
+                    submissionRepository.delete(sub);
+                }
+            }
+        }
     }
 
     @Transactional(readOnly = true)

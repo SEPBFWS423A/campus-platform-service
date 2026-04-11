@@ -4,7 +4,9 @@ import de.campusplatform.campus_platform_service.enums.*;
 import de.campusplatform.campus_platform_service.model.*;
 import de.campusplatform.campus_platform_service.model.Module;
 import de.campusplatform.campus_platform_service.repository.*;
+import de.campusplatform.campus_platform_service.service.StudentSubmissionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -20,7 +22,14 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
-    private static final String DEMO_STUDENT_EMAIL = "student@campusplatform.de";
+    @Value("${app.initial.student.email:}")
+    private String demoStudent1Email;
+
+    @Value("${app.initial.student2.email:}")
+    private String demoStudent2Email;
+
+    @Value("${app.initial.lecturer.email:}")
+    private String initialLecturerEmail;
 
     private static final byte[] DEMO_PDF_BYTES =
             "%PDF-1.4\nDemo PDF\n".getBytes(StandardCharsets.UTF_8);
@@ -42,11 +51,21 @@ public class DataInitializer implements CommandLineRunner {
     private final EventRepository eventRepository;
     private final StudentCourseSubmissionRepository submissionRepository;
     private final SubmissionDocumentRepository submissionDocumentRepository;
+    private final StudentSubmissionService studentSubmissionService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
     public void run(String... args) {
+        // Sanity check/Migration for existing data: 
+        // Ensure RF and SA are marked as submission types if they weren't already
+        examTypeRepository.findAll().forEach(et -> {
+            if (("RF".equals(et.getType()) || "SA".equals(et.getType())) && !et.isSubmission()) {
+                et.setSubmission(true);
+                examTypeRepository.save(et);
+            }
+        });
+
         if (examTypeRepository.count() == 0) {
             InstitutionInfo glCampus = institutionRepository.save(InstitutionInfo.builder()
                     .universityName("CampusPlatform")
@@ -62,7 +81,7 @@ public class DataInitializer implements CommandLineRunner {
 
             ExamType kl = examTypeRepository.save(ExamType.builder()
                     .type("KL")
-                    .category(ExamCategory.WRITTEN)
+                    .submission(false)
                     .nameDe("Klausur")
                     .nameEn("Written Exam")
                     .shortDe("KL")
@@ -71,7 +90,7 @@ public class DataInitializer implements CommandLineRunner {
 
             ExamType rf = examTypeRepository.save(ExamType.builder()
                     .type("RF")
-                    .category(ExamCategory.SUBMISSION)
+                    .submission(true)
                     .nameDe("Referat")
                     .nameEn("Presentation")
                     .shortDe("RF")
@@ -80,7 +99,7 @@ public class DataInitializer implements CommandLineRunner {
 
             ExamType sa = examTypeRepository.save(ExamType.builder()
                     .type("SA")
-                    .category(ExamCategory.SUBMISSION)
+                    .submission(true)
                     .nameDe("Studienarbeit")
                     .nameEn("Term Paper")
                     .shortDe("SA")
@@ -144,7 +163,7 @@ public class DataInitializer implements CommandLineRunner {
                     "Virtual Worlds"
             ));
 
-            AppUser instructor = userRepository.findByEmail("lecturer@campusplatform.de")
+            AppUser instructor = userRepository.findByEmail(initialLecturerEmail)
                     .orElseThrow(() -> new IllegalStateException("Initial lecturer not found!"));
 
             AppUser p = createLecturer(Salutation.MS, AcademicTitle.PROF_DR, "Patrice", "Admin",
@@ -215,10 +234,21 @@ public class DataInitializer implements CommandLineRunner {
                         StudyGroup.builder().name("BFWC424A").specialization(csSpec).startYear(2024).startQuartal(4).build());
                 StudyGroup g3 = studyGroupRepository.save(
                         StudyGroup.builder().name("BFWI424A").specialization(iteSpec).startYear(2024).startQuartal(4).build());
+                StudyGroup g4 = studyGroupRepository.save(
+                        StudyGroup.builder().name("BFWS423A").specialization(seSpec).startYear(2023).startQuartal(4).build());
 
                 createStudentsForGroup(g1, 20, 1000);
                 createStudentsForGroup(g2, 10, 2000);
                 createStudentsForGroup(g3, 10, 3000);
+                createStudentsForGroup(g4, 3, 4000);
+                
+                // Add student1 and student2 to BFWS423A
+                userRepository.findByEmail(demoStudent1Email).ifPresent(s1 -> 
+                    createMembership(s1, g4)
+                );
+                userRepository.findByEmail(demoStudent2Email).ifPresent(s2 -> 
+                    createMembership(s2, g4)
+                );
             }
 
             createFaqs();
@@ -235,6 +265,11 @@ public class DataInitializer implements CommandLineRunner {
                         .findFirst()
                         .orElseThrow(() -> new IllegalStateException("Study group BFWI424A missing"));
 
+                StudyGroup mockG4 = allGroups.stream()
+                        .filter(g -> g.getName().equals("BFWS423A"))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException("Study group BFWS423A missing"));
+
                 /*
                  * Basisdaten für andere Bereiche
                  */
@@ -245,7 +280,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(kl)
                         .submissionStartDate(LocalDateTime.now().minusDays(10))
                         .submissionDeadline(LocalDateTime.now().plusDays(20))
-                        .studyGroups(Set.of(mockG1))
+                        .studyGroups(Set.of(mockG4))
                         .build();
 
                 CourseSeries futureSubmissionSeries = CourseSeries.builder()
@@ -255,7 +290,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(rf)
                         .submissionStartDate(LocalDateTime.now().plusDays(30))
                         .submissionDeadline(LocalDateTime.now().plusDays(60))
-                        .studyGroups(Set.of(mockG2))
+                        .studyGroups(Set.of(mockG4))
                         .build();
 
                 CourseSeries lecturerGradingSeries = CourseSeries.builder()
@@ -266,7 +301,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(kl)
                         .submissionStartDate(LocalDateTime.now().minusDays(90))
                         .submissionDeadline(LocalDateTime.now().minusDays(30))
-                        .studyGroups(Set.of(mockG1, mockG2))
+                        .studyGroups(Set.of(mockG4))
                         .build();
 
                 /*
@@ -281,7 +316,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(rf)
                         .submissionStartDate(LocalDateTime.now().minusDays(2))
                         .submissionDeadline(LocalDateTime.now().plusDays(20))
-                        .studyGroups(Set.of(mockG1))
+                        .studyGroups(Set.of(mockG4))
                         .build();
 
                 // 2. In Bearbeitung
@@ -292,7 +327,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(sa)
                         .submissionStartDate(LocalDateTime.now().minusDays(3))
                         .submissionDeadline(LocalDateTime.now().plusDays(18))
-                        .studyGroups(Set.of(mockG1))
+                        .studyGroups(Set.of(mockG4))
                         .build();
 
                 // 3. Eingereicht
@@ -303,7 +338,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(rf)
                         .submissionStartDate(LocalDateTime.now().minusDays(5))
                         .submissionDeadline(LocalDateTime.now().plusDays(10))
-                        .studyGroups(Set.of(mockG1))
+                        .studyGroups(Set.of(mockG4))
                         .build();
 
                 // 4. Frist abgelaufen – eingereicht
@@ -314,7 +349,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(sa)
                         .submissionStartDate(LocalDateTime.now().minusDays(20))
                         .submissionDeadline(LocalDateTime.now().minusDays(2))
-                        .studyGroups(Set.of(mockG1))
+                        .studyGroups(Set.of(mockG4))
                         .build();
 
                 // 5. Überfällig / nicht eingereicht
@@ -325,7 +360,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(rf)
                         .submissionStartDate(LocalDateTime.now().minusDays(25))
                         .submissionDeadline(LocalDateTime.now().minusDays(3))
-                        .studyGroups(Set.of(mockG1))
+                        .studyGroups(Set.of(mockG4))
                         .build();
 
                 // 6. Bewertet
@@ -337,7 +372,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(sa)
                         .submissionStartDate(LocalDateTime.now().minusDays(40))
                         .submissionDeadline(LocalDateTime.now().minusDays(10))
-                        .studyGroups(Set.of(mockG1))
+                        .studyGroups(Set.of(mockG4))
                         .build();
 
                 // 7. Bald fällig
@@ -348,7 +383,7 @@ public class DataInitializer implements CommandLineRunner {
                         .selectedExamType(rf)
                         .submissionStartDate(LocalDateTime.now().minusDays(1))
                         .submissionDeadline(LocalDateTime.now().plusDays(5))
-                        .studyGroups(Set.of(mockG1))
+                        .studyGroups(Set.of(mockG4))
                         .build();
 
                 List<CourseSeries> savedSeries = courseSeriesRepository.saveAll(List.of(
@@ -391,92 +426,90 @@ public class DataInitializer implements CommandLineRunner {
                     }
                 }
 
-                List<AppUser> allStudents = userRepository.findAll().stream()
-                        .filter(u -> u.getRole() == Role.STUDENT)
-                        .filter(u -> !DEMO_STUDENT_EMAIL.equalsIgnoreCase(u.getEmail()))
-                        .limit(5)
-                        .toList();
-
-                for (AppUser student : allStudents) {
-                    StudentCourseSubmission submission = submissionRepository.save(StudentCourseSubmission.builder()
-                            .courseSeries(lecturerGradingSeries)
-                            .student(student)
-                            .status(SubmissionStatus.SUBMITTED)
-                            .submissionDate(LocalDateTime.now().minusDays(2))
-                            .build());
-
-                    submissionDocumentRepository.save(SubmissionDocument.builder()
-                            .submission(submission)
-                            .fileName("submission.pdf")
-                            .mimeType("application/pdf")
-                            .fileSize((long) DEMO_PDF_BYTES.length)
-                            .contentBase64(DEMO_PDF_BASE64)
-                            .uploadedAt(LocalDateTime.now().minusDays(2))
-                            .build());
+                // Initialize submissions only for SUBMISSION categories when ACTIVE/GRADING
+                for (CourseSeries series : savedSeries) {
+                    ExamType type = series.getSelectedExamType();
+                    if (type == null && series.getModule() != null) type = series.getModule().getPreferredExamType();
+                    
+                    if (series.getStatus() != CourseStatus.PLANNED && type != null && type.isSubmission()) {
+                        studentSubmissionService.initializeSubmissionsForCourseSeries(series.getId());
+                    }
                 }
 
-                AppUser demoStudent = userRepository.findByEmail(DEMO_STUDENT_EMAIL).orElse(null);
-                if (demoStudent != null) {
-                    // 1. Ausstehend
-                    createPendingSubmission(demoStudent, pendingEmptySeries);
-
-                    // 2. In Bearbeitung
-                    createPendingSubmissionWithDocument(
-                            demoStudent,
-                            progressSeries,
-                            "studienarbeit-entwurf.pdf",
-                            LocalDateTime.now().minusDays(1)
-                    );
-
-                    // 3. Eingereicht
-                    createSubmittedSubmissionWithDocument(
-                            demoStudent,
-                            submittedSeries,
-                            "referat-final.pdf",
-                            LocalDateTime.now().minusDays(1)
-                    );
-
-                    // 4. Frist abgelaufen – eingereicht
-                    createSubmittedSubmissionWithDocument(
-                            demoStudent,
-                            submittedClosedSeries,
-                            "studienarbeit-final.pdf",
-                            LocalDateTime.now().minusDays(4)
-                    );
-
-                    // 5. Überfällig / nicht eingereicht
-                    createPendingSubmission(demoStudent, overdueSeries);
-
-                    // 6. Bewertet
-                    createGradedSubmissionWithDocument(
-                            demoStudent,
-                            gradedSeries,
-                            "studienarbeit-bewertet.pdf",
-                            LocalDateTime.now().minusDays(12),
-                            1.7,
-                            88.0,
-                            "Gute Struktur, saubere Argumentation."
-                    );
-
-                    // 7. Bald fällig
-                    createPendingSubmission(demoStudent, dueSoonSeries);
-                } else {
-                    System.out.println("   ! Demo student not found: " + DEMO_STUDENT_EMAIL);
+                AppUser demoStudent1 = userRepository.findByEmail(demoStudent1Email).orElse(null);
+                AppUser demoStudent2 = userRepository.findByEmail(demoStudent2Email).orElse(null);
+                
+                if (demoStudent1 != null) {
+                    initDemoStudentSubmissions(demoStudent1, pendingEmptySeries, progressSeries, submittedSeries, 
+                            submittedClosedSeries, overdueSeries, gradedSeries, dueSoonSeries);
                 }
+                
+                if (demoStudent2 != null) {
+                    initDemoStudentSubmissions(demoStudent2, pendingEmptySeries, progressSeries, submittedSeries, 
+                            submittedClosedSeries, overdueSeries, gradedSeries, dueSoonSeries);
+                }
+
+                System.out.println("=================================================================");
+                System.out.println("   ✓ CAMPUS PLATFORM DATA INITIALIZED");
+                System.out.println("   Institution:     " + glCampus.getUniversityName() + " (" + glCampus.getCity() + ")");
+                System.out.println("   Website:         https://gl.campusplatform.de");
+                System.out.println("   Exam Types:      " + examTypeRepository.count());
+                System.out.println("   Courses:         " + courseOfStudyRepository.count());
+                System.out.println("   Course Series:   " + courseSeriesRepository.count());
+                System.out.println("   Mock Students:   40");
+                System.out.println("   Study Groups:    " + studyGroupRepository.count());
+                System.out.println("   FAQs:            " + faqRepository.count());
+                System.out.println("=================================================================");
             }
-
-            System.out.println("=================================================================");
-            System.out.println("   ✓ CAMPUS PLATFORM DATA INITIALIZED");
-            System.out.println("   Institution:     " + glCampus.getUniversityName() + " (" + glCampus.getCity() + ")");
-            System.out.println("   Website:         https://gl.campusplatform.de");
-            System.out.println("   Exam Types:      " + examTypeRepository.count());
-            System.out.println("   Courses:         " + courseOfStudyRepository.count());
-            System.out.println("   Course Series:   " + courseSeriesRepository.count());
-            System.out.println("   Mock Students:   40");
-            System.out.println("   Study Groups:    " + studyGroupRepository.count());
-            System.out.println("   FAQs:            " + faqRepository.count());
-            System.out.println("=================================================================");
         }
+    }
+
+    private void initDemoStudentSubmissions(AppUser student, CourseSeries pending, CourseSeries progress, 
+                                           CourseSeries submitted, CourseSeries submittedClosed, 
+                                           CourseSeries overdue, CourseSeries graded, CourseSeries dueSoon) {
+        // 1. Ausstehend
+        createPendingSubmission(student, pending);
+
+        // 2. In Bearbeitung
+        createPendingSubmissionWithDocument(
+                student,
+                progress,
+                "studienarbeit-entwurf.pdf",
+                LocalDateTime.now().minusDays(1)
+        );
+
+        // 3. Eingereicht
+        createSubmittedSubmissionWithDocument(
+                student,
+                submitted,
+                "referat-final.pdf",
+                LocalDateTime.now().minusDays(1)
+        );
+
+        // 4. Frist abgelaufen – eingereicht
+        createSubmittedSubmissionWithDocument(
+                student,
+                submittedClosed,
+                "studienarbeit-final.pdf",
+                LocalDateTime.now().minusDays(4)
+        );
+
+        // 5. Überfällig / nicht eingereicht
+        createPendingSubmission(student, overdue);
+
+        // 6. Bewertet
+        createGradedSubmissionWithDocument(
+                student,
+                graded,
+                "studienarbeit-bewertet.pdf",
+                LocalDateTime.now().minusDays(12),
+                1.7,
+                88.0,
+                "Gute Struktur, saubere Argumentation."
+        );
+
+        // 7. Bald fällig
+        createPendingSubmission(student, dueSoon);
     }
 
     private AppUser createLecturer(Salutation salutation, AcademicTitle title, String first, String last, String email) {
@@ -544,45 +577,29 @@ public class DataInitializer implements CommandLineRunner {
                     .studyGroup(group)
                     .build());
         }
-
-        ensureDemoStudent(group);
     }
 
-    private void ensureDemoStudent(StudyGroup group) {
-        if (userRepository.findByEmail(DEMO_STUDENT_EMAIL).isPresent()) {
-            return;
+    private void createMembership(AppUser user, StudyGroup group) {
+        StudentProfile profile = profileRepository.findByAppUserId(user.getId())
+                .orElseGet(() -> {
+                    StudentProfile p = StudentProfile.builder()
+                            .appUser(user)
+                            .studentNumber("S-" + user.getId())
+                            .startYear(group.getStartYear())
+                            .specialization(group.getSpecialization())
+                            .build();
+                    return profileRepository.save(p);
+                });
+
+        if (membershipRepository.findByStudentUserIdAndStudyGroupId(user.getId(), group.getId()).isEmpty()) {
+            membershipRepository.save(StudyGroupMembership.builder()
+                    .student(profile)
+                    .studyGroup(group)
+                    .joinedAt(LocalDateTime.now())
+                    .build());
         }
-
-        AppUser user = AppUser.builder()
-                .salutation(Salutation.MR)
-                .firstName("Demo")
-                .lastName("Student")
-                .email(DEMO_STUDENT_EMAIL)
-                .password(passwordEncoder.encode("password"))
-                .role(Role.STUDENT)
-                .enabled(true)
-                .startYear(2024)
-                .startQuartal(4)
-                .build();
-        user = userRepository.save(user);
-
-        StudentProfile profile = StudentProfile.builder()
-                .appUser(user)
-                .studentNumber("S-DEMO-1")
-                .startYear(2024)
-                .startQuartal(4)
-                .specialization(group.getSpecialization())
-                .build();
-        profile = profileRepository.save(profile);
-
-        user.setStudentProfile(profile);
-        userRepository.save(user);
-
-        membershipRepository.save(StudyGroupMembership.builder()
-                .student(profile)
-                .studyGroup(group)
-                .build());
     }
+
 
     private void createSpecializations(CourseOfStudy course, List<String> names) {
         for (String name : names) {
@@ -594,25 +611,31 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void createPendingSubmission(AppUser student, CourseSeries courseSeries) {
-        submissionRepository.save(StudentCourseSubmission.builder()
-                .courseSeries(courseSeries)
-                .student(student)
-                .status(SubmissionStatus.PENDING)
-                .build());
+        StudentCourseSubmission submission = submissionRepository.findByCourseSeriesIdAndStudentId(courseSeries.getId(), student.getId())
+                .orElse(StudentCourseSubmission.builder()
+                        .courseSeries(courseSeries)
+                        .student(student)
+                        .build());
+        
+        submission.setStatus(SubmissionStatus.PENDING);
+        submissionRepository.save(submission);
     }
 
     private void createPendingSubmissionWithDocument(AppUser student,
                                                      CourseSeries courseSeries,
                                                      String fileName,
                                                      LocalDateTime uploadedAt) {
-        StudentCourseSubmission submission = submissionRepository.save(StudentCourseSubmission.builder()
-                .courseSeries(courseSeries)
-                .student(student)
-                .status(SubmissionStatus.PENDING)
-                .build());
+        StudentCourseSubmission submission = submissionRepository.findByCourseSeriesIdAndStudentId(courseSeries.getId(), student.getId())
+                .orElse(StudentCourseSubmission.builder()
+                        .courseSeries(courseSeries)
+                        .student(student)
+                        .build());
+
+        submission.setStatus(SubmissionStatus.PENDING);
+        StudentCourseSubmission saved = submissionRepository.save(submission);
 
         submissionDocumentRepository.save(SubmissionDocument.builder()
-                .submission(submission)
+                .submission(saved)
                 .fileName(fileName)
                 .mimeType("application/pdf")
                 .fileSize((long) DEMO_PDF_BYTES.length)
@@ -625,15 +648,18 @@ public class DataInitializer implements CommandLineRunner {
                                                        CourseSeries courseSeries,
                                                        String fileName,
                                                        LocalDateTime submissionDate) {
-        StudentCourseSubmission submission = submissionRepository.save(StudentCourseSubmission.builder()
-                .courseSeries(courseSeries)
-                .student(student)
-                .status(SubmissionStatus.SUBMITTED)
-                .submissionDate(submissionDate)
-                .build());
+        StudentCourseSubmission submission = submissionRepository.findByCourseSeriesIdAndStudentId(courseSeries.getId(), student.getId())
+                .orElse(StudentCourseSubmission.builder()
+                        .courseSeries(courseSeries)
+                        .student(student)
+                        .build());
+
+        submission.setStatus(SubmissionStatus.SUBMITTED);
+        submission.setSubmissionDate(submissionDate);
+        StudentCourseSubmission saved = submissionRepository.save(submission);
 
         submissionDocumentRepository.save(SubmissionDocument.builder()
-                .submission(submission)
+                .submission(saved)
                 .fileName(fileName)
                 .mimeType("application/pdf")
                 .fileSize((long) DEMO_PDF_BYTES.length)
@@ -649,18 +675,21 @@ public class DataInitializer implements CommandLineRunner {
                                                     Double grade,
                                                     Double points,
                                                     String feedback) {
-        StudentCourseSubmission submission = submissionRepository.save(StudentCourseSubmission.builder()
-                .courseSeries(courseSeries)
-                .student(student)
-                .status(SubmissionStatus.GRADED)
-                .submissionDate(submissionDate)
-                .grade(grade)
-                .points(points)
-                .feedback(feedback)
-                .build());
+        StudentCourseSubmission submission = submissionRepository.findByCourseSeriesIdAndStudentId(courseSeries.getId(), student.getId())
+                .orElse(StudentCourseSubmission.builder()
+                        .courseSeries(courseSeries)
+                        .student(student)
+                        .build());
+
+        submission.setStatus(SubmissionStatus.GRADED);
+        submission.setSubmissionDate(submissionDate);
+        submission.setGrade(grade);
+        submission.setPoints(points);
+        submission.setFeedback(feedback);
+        StudentCourseSubmission saved = submissionRepository.save(submission);
 
         submissionDocumentRepository.save(SubmissionDocument.builder()
-                .submission(submission)
+                .submission(saved)
                 .fileName(fileName)
                 .mimeType("application/pdf")
                 .fileSize((long) DEMO_PDF_BYTES.length)
