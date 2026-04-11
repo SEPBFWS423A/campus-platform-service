@@ -8,6 +8,8 @@ import java.util.List;
 public record StudentSubmissionDetailResponse(
         Long submissionId,
         Long courseSeriesId,
+        String courseName,
+        List<String> studyGroupNames,
         String examTypeName,
         SubmissionStatus status,
         LocalDateTime submissionStartDate,
@@ -21,5 +23,4 @@ public record StudentSubmissionDetailResponse(
         Double points,
         String feedback,
         List<SubmissionDocumentResponse> documents
-) {
-}
+) {}

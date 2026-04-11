@@ -9,6 +9,7 @@ import de.campusplatform.campus_platform_service.enums.SubmissionStatus;
 import de.campusplatform.campus_platform_service.model.AppUser;
 import de.campusplatform.campus_platform_service.model.CourseSeries;
 import de.campusplatform.campus_platform_service.model.StudentCourseSubmission;
+import de.campusplatform.campus_platform_service.model.StudyGroup;
 import de.campusplatform.campus_platform_service.model.SubmissionDocument;
 import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 import de.campusplatform.campus_platform_service.repository.StudentCourseSubmissionRepository;
@@ -19,17 +20,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 @Service
 @RequiredArgsConstructor
@@ -47,12 +42,6 @@ public class StudentSubmissionService {
             ".pdf",
             ".xlsx",
             ".pptx"
-    );
-
-    private static final Map<String, String> EXTENSION_TO_MIME_TYPE = Map.of(
-            ".pdf", "application/pdf",
-            ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            ".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     );
 
     private final StudentCourseSubmissionRepository submissionRepository;
@@ -88,33 +77,27 @@ public class StudentSubmissionService {
         StudentCourseSubmission submission = getOwnedSubmission(submissionId, student.getId());
 
         ensureEditable(submission);
-
-        if (request == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_request");
-        }
-
-        String fileName = validateAndNormalizeFileName(request.fileName());
-        String mimeType = validateAndNormalizeMimeType(request.mimeType());
-        String base64Content = validateAndNormalizeBase64(request.contentBase64());
+        validateUploadRequest(request);
 
         byte[] decodedContent;
         try {
-            decodedContent = Base64.getDecoder().decode(base64Content);
+            decodedContent = Base64.getDecoder().decode(request.contentBase64().trim());
         } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_content");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültiger Base64-Inhalt.");
         }
 
-        validateFileSize(request.fileSize(), decodedContent.length);
+        if (decodedContent.length > MAX_FILE_SIZE_BYTES) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datei überschreitet 1,5 MB.");
+        }
 
-        String extension = extractExtension(fileName);
-        validateExtension(extension);
-        validateMimeTypeMatchesExtension(mimeType, extension);
-        validateActualFileContent(decodedContent, extension);
+        if (request.fileSize() != null && !request.fileSize().equals((long) decodedContent.length)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dateigröße stimmt nicht mit dem Inhalt überein.");
+        }
 
         SubmissionDocument document = SubmissionDocument.builder()
                 .submission(submission)
-                .fileName(fileName)
-                .mimeType(mimeType)
+                .fileName(request.fileName().trim())
+                .mimeType(request.mimeType().trim())
                 .fileSize((long) decodedContent.length)
                 .contentBase64(Base64.getEncoder().encodeToString(decodedContent))
                 .uploadedAt(LocalDateTime.now())
@@ -134,10 +117,33 @@ public class StudentSubmissionService {
         ensureEditable(submission);
 
         SubmissionDocument document = submissionDocumentRepository.findByIdAndSubmissionId(documentId, submissionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "error.document_not_found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dokument nicht gefunden."));
 
         submission.getDocuments().remove(document);
         submissionDocumentRepository.delete(document);
+    }
+
+    @Transactional(readOnly = true)
+    public SubmissionDocumentDownloadData downloadDocument(Long submissionId, Long documentId, String username) {
+        AppUser student = getCurrentUser(username);
+        getOwnedSubmission(submissionId, student.getId());
+
+        SubmissionDocument document = submissionDocumentRepository.findByIdAndSubmissionId(documentId, submissionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dokument nicht gefunden."));
+
+        byte[] content;
+        try {
+            content = Base64.getDecoder().decode(document.getContentBase64());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Dokumentinhalt ist ungültig.");
+        }
+
+        return new SubmissionDocumentDownloadData(
+                document.getFileName(),
+                document.getMimeType(),
+                document.getFileSize(),
+                content
+        );
     }
 
     @Transactional
@@ -148,7 +154,7 @@ public class StudentSubmissionService {
         ensureEditable(submission);
 
         if (submission.getDocuments() == null || submission.getDocuments().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.submission_no_document");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mindestens ein Dokument muss hochgeladen werden.");
         }
 
         submission.setStatus(SubmissionStatus.SUBMITTED);
@@ -157,43 +163,22 @@ public class StudentSubmissionService {
         submissionRepository.save(submission);
     }
 
-    @Transactional(readOnly = true)
-    public SubmissionDocumentDownloadData downloadDocument(Long submissionId, Long documentId, String username) {
-        AppUser student = getCurrentUser(username);
-
-        getOwnedSubmission(submissionId, student.getId());
-
-        SubmissionDocument document = submissionDocumentRepository.findByIdAndSubmissionId(documentId, submissionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "error.document_not_found"));
-
-        byte[] decodedContent;
-        try {
-            decodedContent = Base64.getDecoder().decode(document.getContentBase64());
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_content");
-        }
-
-        return new SubmissionDocumentDownloadData(
-                document.getFileName(),
-                document.getMimeType(),
-                document.getFileSize() != null ? document.getFileSize() : decodedContent.length,
-                decodedContent
-        );
-    }
-
     private AppUser getCurrentUser(String username) {
         return appUserRepository.findByEmailIgnoreCase(username)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "error.user_not_found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden."));
     }
 
     private StudentCourseSubmission getOwnedSubmission(Long submissionId, Long studentId) {
         return submissionRepository.findByIdAndStudentId(submissionId, studentId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "error.submission_not_found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Abgabe nicht gefunden."));
     }
 
     private void ensureEditable(StudentCourseSubmission submission) {
         if (!isEditable(submission)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "error.submission_not_editable");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Diese Abgabe kann nicht mehr bearbeitet werden."
+            );
         }
     }
 
@@ -221,148 +206,38 @@ public class StudentSubmissionService {
                 && submission.getStatus() == SubmissionStatus.PENDING;
     }
 
-    private String validateAndNormalizeFileName(String fileName) {
-        if (fileName == null || fileName.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_name");
+    private void validateUploadRequest(UploadSubmissionDocumentRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request fehlt.");
         }
 
-        String sanitized = fileName.trim();
-
-        if (sanitized.length() > 255) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_name");
+        if (request.fileName() == null || request.fileName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dateiname fehlt.");
         }
 
-        if (sanitized.contains("..")
-                || sanitized.contains("/")
-                || sanitized.contains("\\")
-                || sanitized.contains("\0")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_name");
+        if (request.mimeType() == null || request.mimeType().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "MIME-Type fehlt.");
         }
 
-        return sanitized;
-    }
-
-    private String validateAndNormalizeMimeType(String mimeType) {
-        if (mimeType == null || mimeType.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_type");
+        if (!ALLOWED_MIME_TYPES.contains(request.mimeType().trim())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "MIME-Type nicht erlaubt.");
         }
 
-        String normalized = mimeType.trim().toLowerCase(Locale.ROOT);
+        validateFileExtension(request.fileName().trim());
 
-        int separatorIndex = normalized.indexOf(';');
-        if (separatorIndex >= 0) {
-            normalized = normalized.substring(0, separatorIndex).trim();
-        }
-
-        if (!ALLOWED_MIME_TYPES.contains(normalized)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_type");
-        }
-
-        return normalized;
-    }
-
-    private String validateAndNormalizeBase64(String contentBase64) {
-        if (contentBase64 == null || contentBase64.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_content");
-        }
-
-        String normalized = contentBase64.trim();
-
-        if (normalized.startsWith("data:")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_content");
-        }
-
-        return normalized;
-    }
-
-    private void validateFileSize(Long requestFileSize, int decodedLength) {
-        if (decodedLength <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_content");
-        }
-
-        if (decodedLength > MAX_FILE_SIZE_BYTES) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.file_too_large");
-        }
-
-        if (requestFileSize != null && !requestFileSize.equals((long) decodedLength)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_content");
+        if (request.contentBase64() == null || request.contentBase64().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dateiinhalt fehlt.");
         }
     }
 
-    private String extractExtension(String fileName) {
-        int lastDot = fileName.lastIndexOf('.');
-        if (lastDot < 0 || lastDot == fileName.length() - 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_type");
+    private void validateFileExtension(String fileName) {
+        String lower = fileName.toLowerCase();
+
+        boolean allowed = ALLOWED_EXTENSIONS.stream().anyMatch(lower::endsWith);
+
+        if (!allowed) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dateiendung nicht erlaubt.");
         }
-
-        return fileName.substring(lastDot).toLowerCase(Locale.ROOT);
-    }
-
-    private void validateExtension(String extension) {
-        if (!ALLOWED_EXTENSIONS.contains(extension)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_type");
-        }
-    }
-
-    private void validateMimeTypeMatchesExtension(String mimeType, String extension) {
-        String expectedMimeType = EXTENSION_TO_MIME_TYPE.get(extension);
-
-        if (expectedMimeType == null || !expectedMimeType.equals(mimeType)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_type");
-        }
-    }
-
-    private void validateActualFileContent(byte[] fileContent, String extension) {
-        switch (extension) {
-            case ".pdf" -> validatePdfContent(fileContent);
-            case ".xlsx" -> validateOfficeZipContent(fileContent, "xl/");
-            case ".pptx" -> validateOfficeZipContent(fileContent, "ppt/");
-            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_type");
-        }
-    }
-
-    private void validatePdfContent(byte[] fileContent) {
-        if (fileContent.length < 5) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_content");
-        }
-
-        boolean isPdf = fileContent[0] == '%'
-                && fileContent[1] == 'P'
-                && fileContent[2] == 'D'
-                && fileContent[3] == 'F'
-                && fileContent[4] == '-';
-
-        if (!isPdf) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_content");
-        }
-    }
-
-    private void validateOfficeZipContent(byte[] fileContent, String requiredFolderPrefix) {
-        try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(fileContent))) {
-            boolean hasContentType = false;
-            boolean hasRequiredFolder = false;
-
-            ZipEntry entry;
-            while ((entry = zis.getNextEntry()) != null) {
-                String name = entry.getName();
-
-                if ("[Content_Types].xml".equals(name)) {
-                    hasContentType = true;
-                }
-
-                if (name.startsWith(requiredFolderPrefix)) {
-                    hasRequiredFolder = true;
-                }
-
-                if (hasContentType && hasRequiredFolder) {
-                    return;
-                }
-            }
-        } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_content");
-        }
-
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "error.invalid_file_content");
     }
 
     private StudentSubmissionListItemResponse toListItemResponse(StudentCourseSubmission submission) {
@@ -371,6 +246,8 @@ public class StudentSubmissionService {
         return new StudentSubmissionListItemResponse(
                 submission.getId(),
                 submission.getCourseSeries().getId(),
+                resolveCourseName(submission),
+                resolveStudyGroupNames(submission),
                 submission.getCourseSeries().getSelectedExamType() != null
                         ? submission.getCourseSeries().getSelectedExamType().getNameDe()
                         : null,
@@ -389,17 +266,19 @@ public class StudentSubmissionService {
     private StudentSubmissionDetailResponse toDetailResponse(StudentCourseSubmission submission) {
         boolean hasDocuments = submission.getDocuments() != null && !submission.getDocuments().isEmpty();
 
-        List<SubmissionDocumentResponse> documents =
-                submission.getDocuments() == null
-                        ? List.of()
-                        : submission.getDocuments().stream()
-                          .sorted(Comparator.comparing(SubmissionDocument::getUploadedAt).reversed())
-                          .map(this::toDocumentResponse)
-                          .toList();
+        List<SubmissionDocumentResponse> documents = submission.getDocuments() == null
+                ? List.of()
+                : submission.getDocuments()
+                  .stream()
+                  .sorted(Comparator.comparing(SubmissionDocument::getUploadedAt).reversed())
+                  .map(this::toDocumentResponse)
+                  .toList();
 
         return new StudentSubmissionDetailResponse(
                 submission.getId(),
                 submission.getCourseSeries().getId(),
+                resolveCourseName(submission),
+                resolveStudyGroupNames(submission),
                 submission.getCourseSeries().getSelectedExamType() != null
                         ? submission.getCourseSeries().getSelectedExamType().getNameDe()
                         : null,
@@ -426,5 +305,24 @@ public class StudentSubmissionService {
                 document.getFileSize(),
                 document.getUploadedAt()
         );
+    }
+
+    private String resolveCourseName(StudentCourseSubmission submission) {
+        if (submission.getCourseSeries() == null || submission.getCourseSeries().getModule() == null) {
+            return null;
+        }
+        return submission.getCourseSeries().getModule().getName();
+    }
+
+    private List<String> resolveStudyGroupNames(StudentCourseSubmission submission) {
+        if (submission.getCourseSeries() == null || submission.getCourseSeries().getStudyGroups() == null) {
+            return List.of();
+        }
+
+        return submission.getCourseSeries().getStudyGroups()
+                .stream()
+                .map(StudyGroup::getName)
+                .sorted()
+                .toList();
     }
 }
