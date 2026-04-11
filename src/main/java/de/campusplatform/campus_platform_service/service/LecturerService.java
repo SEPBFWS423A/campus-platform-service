@@ -303,4 +303,30 @@ public class LecturerService {
                 .findFirst()
                 .orElse(null);
     }
+
+    @Transactional(readOnly = true)
+    public SubmissionDocumentDownloadData getStudentSubmissionDocument(Long seriesId, Long studentId) {
+        StudentCourseSubmission submission = submissionRepository.findByCourseSeriesIdAndStudentId(seriesId, studentId)
+                .orElseThrow(() -> new AppException("Submission not found"));
+
+        if (submission.getDocuments() == null || submission.getDocuments().isEmpty()) {
+            throw new AppException("No documents found for this submission");
+        }
+
+        // Get the latest document
+        SubmissionDocument doc = submission.getDocuments().stream()
+                .sorted(java.util.Comparator.comparing(
+                        SubmissionDocument::getUploadedAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())
+                ).reversed())
+                .findFirst()
+                .orElseThrow(() -> new AppException("Document not found"));
+
+        return new SubmissionDocumentDownloadData(
+                doc.getFileName(),
+                doc.getMimeType(),
+                doc.getFileSize() != null ? doc.getFileSize() : 0L,
+                java.util.Base64.getDecoder().decode(doc.getContentBase64())
+        );
+    }
 }
