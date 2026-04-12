@@ -9,7 +9,7 @@ public record StudentActiveCourseResponse(
         String lecturerName,
         CourseStatus status,
         String examTypeName,
-        boolean isSubmission,
+        boolean submission,
         LocalDateTime submissionDeadline
 ) {
 }

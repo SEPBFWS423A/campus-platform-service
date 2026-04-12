@@ -64,7 +64,8 @@ public class StudentService {
                 event.getDurationMinutes(),
                 event.getCourseSeries() != null ? event.getCourseSeries().getModule().getName() : "Unknown",
                 lecturerName,
-                event.getRooms() != null ? event.getRooms().stream().map(Room::getName).collect(Collectors.toList()) : List.of()
+                event.getRooms() != null ? event.getRooms().stream().map(Room::getName).collect(Collectors.toList()) : List.of(),
+                event.getCourseSeries() != null && event.getCourseSeries().getSelectedExamType() != null && event.getCourseSeries().getSelectedExamType().isSubmission()
         );
     }
 

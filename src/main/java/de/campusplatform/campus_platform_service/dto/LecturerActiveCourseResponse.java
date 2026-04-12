@@ -10,7 +10,7 @@ public record LecturerActiveCourseResponse(
     List<String> studyGroups,
     CourseStatus status,
     String examTypeName,
-    boolean isSubmission,
+    boolean submission,
     LocalDateTime submissionDeadline,
     Long attendeeCount
 ) {}
