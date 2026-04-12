@@ -11,13 +11,8 @@ import de.campusplatform.campus_platform_service.model.CourseSeries;
 import de.campusplatform.campus_platform_service.model.ExamType;
 import de.campusplatform.campus_platform_service.model.Module;
 import de.campusplatform.campus_platform_service.model.StudyGroup;
-import de.campusplatform.campus_platform_service.repository.AppUserRepository;
-import de.campusplatform.campus_platform_service.repository.CourseSeriesRepository;
-import de.campusplatform.campus_platform_service.repository.ExamTypeRepository;
-import de.campusplatform.campus_platform_service.repository.ModuleRepository;
-import de.campusplatform.campus_platform_service.repository.StudyGroupRepository;
-import de.campusplatform.campus_platform_service.repository.EventRepository;
-import de.campusplatform.campus_platform_service.enums.EventType;
+import de.campusplatform.campus_platform_service.repository.*;
+import de.campusplatform.campus_platform_service.enums.SubmissionStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +30,7 @@ public class CourseSeriesService {
     private final StudyGroupRepository studyGroupRepository;
     private final StudentSubmissionService studentSubmissionService;
     private final EventRepository eventRepository;
+    private final StudentCourseSubmissionRepository submissionRepository;
 
     public CourseSeriesService(CourseSeriesRepository courseSeriesRepository, 
                                ModuleRepository moduleRepository, 
@@ -42,7 +38,8 @@ public class CourseSeriesService {
                                ExamTypeRepository examTypeRepository, 
                                StudyGroupRepository studyGroupRepository,
                                StudentSubmissionService studentSubmissionService,
-                               EventRepository eventRepository) {
+                               EventRepository eventRepository,
+                               StudentCourseSubmissionRepository submissionRepository) {
         this.courseSeriesRepository = courseSeriesRepository;
         this.moduleRepository = moduleRepository;
         this.appUserRepository = appUserRepository;
@@ -50,6 +47,7 @@ public class CourseSeriesService {
         this.studyGroupRepository = studyGroupRepository;
         this.studentSubmissionService = studentSubmissionService;
         this.eventRepository = eventRepository;
+        this.submissionRepository = submissionRepository;
     }
 
     public List<AdminCourseSeriesResponse> getAllCourseSeries() {
@@ -184,6 +182,37 @@ public class CourseSeriesService {
                     .collect(Collectors.toList())
                 : List.of();
 
+        List<AdminCourseSeriesResponse.EventResponse> eventResponses = entity.getEvents() != null
+                ? entity.getEvents().stream()
+                    .map(e -> new AdminCourseSeriesResponse.EventResponse(
+                            e.getId(),
+                            e.getEventType() != null ? e.getEventType().name() : null,
+                            e.getStartTime(),
+                            e.getStartTime() != null && e.getDurationMinutes() != null 
+                                ? e.getStartTime().plusMinutes(e.getDurationMinutes()) 
+                                : null,
+                            e.getRooms() != null && !e.getRooms().isEmpty() 
+                                ? e.getRooms().stream().map(de.campusplatform.campus_platform_service.model.Room::getName).collect(Collectors.joining(", ")) 
+                                : null,
+                            e.getRooms() != null && !e.getRooms().isEmpty() 
+                                ? e.getRooms().stream().mapToInt(de.campusplatform.campus_platform_service.model.Room::getExamSeats).sum() 
+                                : null
+                    ))
+                    .collect(Collectors.toList())
+                : List.of();
+
+        String examFileName = entity.getDocuments().stream()
+                .filter(d -> d.getType() == de.campusplatform.campus_platform_service.enums.ExamDocumentType.EXAM_PAPER)
+                .map(de.campusplatform.campus_platform_service.model.ExamDocument::getFileName)
+                .findFirst().orElse(null);
+
+        String solutionFileName = entity.getDocuments().stream()
+                .filter(d -> d.getType() == de.campusplatform.campus_platform_service.enums.ExamDocumentType.SAMPLE_SOLUTION)
+                .map(de.campusplatform.campus_platform_service.model.ExamDocument::getFileName)
+                .findFirst().orElse(null);
+
+        Long submissionCount = submissionRepository.countByCourseSeriesIdAndStatus(entity.getId(), SubmissionStatus.SUBMITTED);
+
         return new AdminCourseSeriesResponse(
                 entity.getId(),
                 entity.getModule() != null ? entity.getModule().getId() : null,
@@ -191,11 +220,51 @@ public class CourseSeriesService {
                 entity.getAssignedLecturer() != null ? entity.getAssignedLecturer().getId() : null,
                 entity.getAssignedLecturer() != null ? (entity.getAssignedLecturer().getFirstName() + " " + entity.getAssignedLecturer().getLastName()) : null,
                 entity.getStatus(),
+                resolveEffectiveStatus(entity),
                 entity.getSelectedExamType() != null ? entity.getSelectedExamType().getId() : null,
                 entity.getSelectedExamType() != null ? entity.getSelectedExamType().getNameDe() : null, 
                 entity.getSubmissionStartDate(),
                 entity.getSubmissionDeadline(),
-                studyGroupDTOs
+                entity.getSelectedExamType() != null && entity.getSelectedExamType().isSubmission(),
+                examFileName,
+                solutionFileName,
+                entity.getLecturerNotes(),
+                submissionCount,
+                studyGroupDTOs,
+                eventResponses
         );
+    }
+
+    private ExamStatus resolveEffectiveStatus(CourseSeries cs) {
+        ExamStatus current = cs.getExamStatus();
+        if (current == ExamStatus.COMPLETED || current == ExamStatus.GRADING) {
+            return current;
+        }
+
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+        // 1. Check for Submission Exams
+        if (cs.getSelectedExamType() != null && cs.getSelectedExamType().isSubmission()) {
+            if (cs.getSubmissionDeadline() != null && cs.getSubmissionDeadline().isBefore(now)) {
+                return ExamStatus.GRADING;
+            }
+        }
+
+        // 2. Check for Written Exams
+        if (cs.getSelectedExamType() != null && !cs.getSelectedExamType().isSubmission()) {
+             boolean allEventsPassed = !cs.getEvents().isEmpty() && cs.getEvents().stream()
+                     .allMatch(e -> {
+                         java.time.LocalDateTime end = e.getStartTime() != null && e.getDurationMinutes() != null 
+                                 ? e.getStartTime().plusMinutes(e.getDurationMinutes()) 
+                                 : e.getStartTime();
+                         return end != null && end.isBefore(now);
+                     });
+             
+             if (allEventsPassed) {
+                 return ExamStatus.GRADING;
+             }
+        }
+
+        return current;
     }
 }
