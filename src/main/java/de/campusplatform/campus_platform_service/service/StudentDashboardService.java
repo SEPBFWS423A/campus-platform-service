@@ -49,7 +49,7 @@ public class StudentDashboardService {
         LocalDateTime todayEnd   = todayStart.plusDays(1);
         List<StudentTodayEventResponse> todayEvents = groupIds.isEmpty()
             ? List.of()
-            : eventRepository.findOverlappingEventsForGroups(groupIds, todayStart, todayEnd, null)
+            : eventRepository.findNonPlannedOverlappingEventsForGroups(groupIds, todayStart, todayEnd)
                 .stream()
                 .sorted(Comparator.comparing(Event::getStartTime))
                 .map(this::mapToTodayEvent)
@@ -58,7 +58,7 @@ public class StudentDashboardService {
         LocalDateTime now     = LocalDateTime.now();
         LocalDateTime horizon = now.plusDays(365);
         long upcomingExams = groupIds.isEmpty() ? 0L :
-            eventRepository.findOverlappingEventsForGroups(groupIds, now, horizon, null)
+            eventRepository.findNonPlannedOverlappingEventsForGroups(groupIds, now, horizon)
                 .stream()
                 .filter(e -> e.getEventType() == EventType.KLAUSUR)
                 .count();

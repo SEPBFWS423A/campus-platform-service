@@ -223,9 +223,31 @@ public class DataInitializer implements CommandLineRunner {
                     .preferredExamType(rf)
                     .build());
 
+            Module softArch = moduleRepository.save(Module.builder()
+                    .name("Software Modelling and Architecture")
+                    .semester(6)
+                    .requiredTotalHours(40)
+                    .courseOfStudy(wiBachelor)
+                    .specialization(seSpec)
+                    .possibleExamTypes(allTypes)
+                    .preferredExamType(kl)
+                    .build());
+
+            Module projMgmt = moduleRepository.save(Module.builder()
+                    .name("Projektmanagement")
+                    .semester(6)
+                    .requiredTotalHours(40)
+                    .courseOfStudy(wiBachelor)
+                    .specialization(null)
+                    .possibleExamTypes(allTypes)
+                    .preferredExamType(sa)
+                    .build());
+
             assignLecturersToModule(prog1, lecturers);
             assignLecturersToModule(prog2, lecturers);
             assignLecturersToModule(seProject, lecturers);
+            assignLecturersToModule(softArch, lecturers);
+            assignLecturersToModule(projMgmt, lecturers);
 
             if (studyGroupRepository.count() == 0) {
                 StudyGroup g1 = studyGroupRepository.save(
@@ -255,198 +277,91 @@ public class DataInitializer implements CommandLineRunner {
 
             if (courseSeriesRepository.count() == 0) {
                 List<StudyGroup> allGroups = studyGroupRepository.findAll();
-                StudyGroup mockG1 = allGroups.stream()
-                        .filter(g -> g.getName().equals("BFWS424A"))
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalStateException("Study group BFWS424A missing"));
-
-                StudyGroup mockG2 = allGroups.stream()
-                        .filter(g -> g.getName().equals("BFWI424A"))
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalStateException("Study group BFWI424A missing"));
-
-                StudyGroup mockG4 = allGroups.stream()
-                        .filter(g -> g.getName().equals("BFWS423A"))
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalStateException("Study group BFWS423A missing"));
-
-                /*
-                 * Basisdaten für andere Bereiche
-                 */
-                CourseSeries writtenExamSeries = CourseSeries.builder()
-                        .module(prog1)
-                        .assignedLecturer(instructor)
-                        .status(CourseStatus.ACTIVE)
-                        .selectedExamType(kl)
-                        .submissionStartDate(LocalDateTime.now().minusDays(10))
-                        .submissionDeadline(LocalDateTime.now().plusDays(20))
-                        .studyGroups(Set.of(mockG4))
-                        .build();
-
-                CourseSeries futureSubmissionSeries = CourseSeries.builder()
-                        .module(seProject)
-                        .assignedLecturer(instructor)
-                        .status(CourseStatus.PLANNED)
-                        .selectedExamType(rf)
-                        .submissionStartDate(LocalDateTime.now().plusDays(30))
-                        .submissionDeadline(LocalDateTime.now().plusDays(60))
-                        .studyGroups(Set.of(mockG4))
-                        .build();
-
-                CourseSeries lecturerGradingSeries = CourseSeries.builder()
-                        .module(prog1)
-                        .assignedLecturer(instructor)
-                        .status(CourseStatus.GRADING)
-                        .examStatus(ExamStatus.GRADING)
-                        .selectedExamType(kl)
-                        .submissionStartDate(LocalDateTime.now().minusDays(90))
-                        .submissionDeadline(LocalDateTime.now().minusDays(30))
-                        .studyGroups(Set.of(mockG4))
-                        .build();
-
-                /*
-                 * 7 Testfälle für die Student-Statuslogik
-                 */
-
-                // 1. Ausstehend
-                CourseSeries pendingEmptySeries = CourseSeries.builder()
-                        .module(seProject)
-                        .assignedLecturer(instructor)
-                        .status(CourseStatus.ACTIVE)
-                        .selectedExamType(rf)
-                        .submissionStartDate(LocalDateTime.now().minusDays(2))
-                        .submissionDeadline(LocalDateTime.now().plusDays(20))
-                        .studyGroups(Set.of(mockG4))
-                        .build();
-
-                // 2. In Bearbeitung
-                CourseSeries progressSeries = CourseSeries.builder()
-                        .module(seProject)
-                        .assignedLecturer(instructor)
-                        .status(CourseStatus.ACTIVE)
-                        .selectedExamType(sa)
-                        .submissionStartDate(LocalDateTime.now().minusDays(3))
-                        .submissionDeadline(LocalDateTime.now().plusDays(18))
-                        .studyGroups(Set.of(mockG4))
-                        .build();
-
-                // 3. Eingereicht
-                CourseSeries submittedSeries = CourseSeries.builder()
-                        .module(seProject)
-                        .assignedLecturer(instructor)
-                        .status(CourseStatus.ACTIVE)
-                        .selectedExamType(rf)
-                        .submissionStartDate(LocalDateTime.now().minusDays(5))
-                        .submissionDeadline(LocalDateTime.now().plusDays(10))
-                        .studyGroups(Set.of(mockG4))
-                        .build();
-
-                // 4. Frist abgelaufen – eingereicht
-                CourseSeries submittedClosedSeries = CourseSeries.builder()
-                        .module(seProject)
-                        .assignedLecturer(instructor)
-                        .status(CourseStatus.ACTIVE)
-                        .selectedExamType(sa)
-                        .submissionStartDate(LocalDateTime.now().minusDays(20))
-                        .submissionDeadline(LocalDateTime.now().minusDays(2))
-                        .studyGroups(Set.of(mockG4))
-                        .build();
-
-                // 5. Überfällig / nicht eingereicht
-                CourseSeries overdueSeries = CourseSeries.builder()
-                        .module(seProject)
-                        .assignedLecturer(instructor)
-                        .status(CourseStatus.ACTIVE)
-                        .selectedExamType(rf)
-                        .submissionStartDate(LocalDateTime.now().minusDays(25))
-                        .submissionDeadline(LocalDateTime.now().minusDays(3))
-                        .studyGroups(Set.of(mockG4))
-                        .build();
-
-                // 6. Bewertet
-                CourseSeries gradedSeries = CourseSeries.builder()
-                        .module(seProject)
-                        .assignedLecturer(instructor)
-                        .status(CourseStatus.GRADING)
-                        .examStatus(ExamStatus.GRADING)
-                        .selectedExamType(sa)
-                        .submissionStartDate(LocalDateTime.now().minusDays(40))
-                        .submissionDeadline(LocalDateTime.now().minusDays(10))
-                        .studyGroups(Set.of(mockG4))
-                        .build();
-
-                // 7. Bald fällig
-                CourseSeries dueSoonSeries = CourseSeries.builder()
-                        .module(seProject)
-                        .assignedLecturer(instructor)
-                        .status(CourseStatus.ACTIVE)
-                        .selectedExamType(rf)
-                        .submissionStartDate(LocalDateTime.now().minusDays(1))
-                        .submissionDeadline(LocalDateTime.now().plusDays(5))
-                        .studyGroups(Set.of(mockG4))
-                        .build();
-
-                List<CourseSeries> savedSeries = courseSeriesRepository.saveAll(List.of(
-                        writtenExamSeries,
-                        futureSubmissionSeries,
-                        lecturerGradingSeries,
-                        pendingEmptySeries,
-                        progressSeries,
-                        submittedSeries,
-                        submittedClosedSeries,
-                        overdueSeries,
-                        gradedSeries,
-                        dueSoonSeries
-                ));
+                StudyGroup mockG1 = allGroups.stream().filter(g -> g.getName().equals("BFWS424A")).findFirst().orElseThrow();
+                StudyGroup mockG2 = allGroups.stream().filter(g -> g.getName().equals("BFWC424A")).findFirst().orElseThrow();
+                StudyGroup mockG3 = allGroups.stream().filter(g -> g.getName().equals("BFWI424A")).findFirst().orElseThrow();
+                StudyGroup mockG4 = allGroups.stream().filter(g -> g.getName().equals("BFWS423A")).findFirst().orElseThrow();
 
                 List<Room> rooms = roomRepository.findAll();
-                if (!rooms.isEmpty()) {
-                    for (CourseSeries series : savedSeries) {
-                        for (int i = 0; i < 10; i++) {
-                            Room room = rooms.get(i % rooms.size());
-                            EventType type = EventType.LEHRVERANSTALTUNG;
-                            LocalDateTime startTime = series.getSubmissionStartDate().plusWeeks(i)
-                                    .withHour(Math.min(8 + i, 18))
-                                    .withMinute(0);
+                Room roomA = rooms.isEmpty() ? null : rooms.get(0);
+                Room roomB = rooms.size() > 1 ? rooms.get(1) : roomA;
 
-                            if (series == lecturerGradingSeries && i == 9) {
-                                type = EventType.KLAUSUR;
-                                startTime = LocalDateTime.now().minusDays(1).withHour(10).withMinute(0);
-                            }
+                // 1. SE Project - Active (G4)
+                CourseSeries seriesG4_SE = courseSeriesRepository.save(CourseSeries.builder()
+                        .module(seProject).assignedLecturer(instructor).status(CourseStatus.ACTIVE)
+                        .selectedExamType(rf).studyGroups(Set.of(mockG4))
+                        .submissionStartDate(LocalDateTime.now().minusDays(10)).submissionDeadline(LocalDateTime.now().plusDays(20))
+                        .build());
 
-                            eventRepository.save(Event.builder()
-                                    .courseSeries(series)
-                                    .rooms(Set.of(room))
-                                    .name(series.getModule().getName() + " (" + (i + 1) + ")")
-                                    .eventType(type)
-                                    .startTime(startTime)
-                                    .durationMinutes(90)
-                                    .build());
-                        }
-                    }
-                }
+                // 2. SoftArch - Active (G4)
+                CourseSeries seriesG4_SoftArch = courseSeriesRepository.save(CourseSeries.builder()
+                        .module(softArch).assignedLecturer(instructor).status(CourseStatus.ACTIVE)
+                        .selectedExamType(kl).studyGroups(Set.of(mockG4))
+                        .submissionStartDate(LocalDateTime.now().minusDays(5)).submissionDeadline(LocalDateTime.now().plusDays(30))
+                        .build());
 
-                // Initialize submissions only for SUBMISSION categories when ACTIVE/GRADING
-                for (CourseSeries series : savedSeries) {
-                    ExamType type = series.getSelectedExamType();
-                    if (type == null && series.getModule() != null) type = series.getModule().getPreferredExamType();
-                    
-                    if (series.getStatus() != CourseStatus.PLANNED && type != null && type.isSubmission()) {
-                        studentSubmissionService.initializeSubmissionsForCourseSeries(series.getId());
-                    }
-                }
+                // 3. ProjMgmt - Grading (G4)
+                CourseSeries seriesG4_ProjMgmt = courseSeriesRepository.save(CourseSeries.builder()
+                        .module(projMgmt).assignedLecturer(instructor).status(CourseStatus.GRADING)
+                        .examStatus(ExamStatus.GRADING).selectedExamType(sa).studyGroups(Set.of(mockG4))
+                        .submissionStartDate(LocalDateTime.now().minusDays(60)).submissionDeadline(LocalDateTime.now().minusDays(10))
+                        .build());
 
-                AppUser demoStudent1 = userRepository.findByEmail(demoStudent1Email).orElse(null);
-                AppUser demoStudent2 = userRepository.findByEmail(demoStudent2Email).orElse(null);
+                // 4. ProjMgmt - Active (G1)
+                CourseSeries seriesG1_ProjMgmt = courseSeriesRepository.save(CourseSeries.builder()
+                        .module(projMgmt).assignedLecturer(instructor).status(CourseStatus.ACTIVE)
+                        .selectedExamType(sa).studyGroups(Set.of(mockG1))
+                        .submissionStartDate(LocalDateTime.now().minusDays(20)).submissionDeadline(LocalDateTime.now().plusDays(15))
+                        .build());
+
+                // 5. Prog 2 - Planned (G2)
+                CourseSeries seriesG2_Prog2 = courseSeriesRepository.save(CourseSeries.builder()
+                        .module(prog2).assignedLecturer(instructor).status(CourseStatus.PLANNED)
+                        .selectedExamType(kl).studyGroups(Set.of(mockG4))
+                        .submissionStartDate(LocalDateTime.now().plusWeeks(8)).submissionDeadline(LocalDateTime.now().plusWeeks(12))
+                        .build());
+
+                // Events Generation
+                // Group G4 Schedule (Mon/Tue)
+                LocalDateTime lastG4_SE = createSchedule(seriesG4_SE, roomA, 1, 9, 45, 12); // Mondays 09:45
+                LocalDateTime lastG4_SoftArch = createSchedule(seriesG4_SoftArch, roomB, 2, 13, 45, 12); // Tuesdays 13:45
+                LocalDateTime lastG4_ProjMgmt = createSchedule(seriesG4_ProjMgmt, roomA, 1, 13, 45, 12); // Mondays 13:45
                 
-                if (demoStudent1 != null) {
-                    initDemoStudentSubmissions(demoStudent1, pendingEmptySeries, progressSeries, submittedSeries, 
-                            submittedClosedSeries, overdueSeries, gradedSeries, dueSoonSeries);
+                // Group G1 Schedule
+                LocalDateTime lastG1_ProjMgmt = createSchedule(seriesG1_ProjMgmt, roomB, 3, 9, 45, 12); // Wednesdays 09:45
+
+                // Special Exam Events for Active & Planned (Only KL/RF, always last)
+                attemptAddExam(seriesG4_SE, roomA, lastG4_SE);
+                attemptAddExam(seriesG4_SoftArch, roomB, lastG4_SoftArch);
+                attemptAddExam(seriesG1_ProjMgmt, roomB, lastG1_ProjMgmt);
+                attemptAddExam(seriesG2_Prog2, roomA, LocalDateTime.now().plusWeeks(12)); // No lecture schedule, use base offset
+
+                // Initialize submissions
+                List.of(seriesG4_SE, seriesG4_SoftArch, seriesG4_ProjMgmt, seriesG1_ProjMgmt).forEach(s -> {
+                    studentSubmissionService.initializeSubmissionsForCourseSeries(s.getId());
+                });
+
+                AppUser student1 = userRepository.findByEmail(demoStudent1Email).orElse(null);
+                AppUser student2 = userRepository.findByEmail(demoStudent2Email).orElse(null);
+
+                if (student1 != null) {
+                    // SE Project: Submitted
+                    createSubmittedSubmissionWithDocument(student1, seriesG4_SE, "se-entwurf.pdf", LocalDateTime.now().minusDays(2));
+                    // ProjMgmt: Graded
+                    createGradedSubmissionWithDocument(student1, seriesG4_ProjMgmt, "management-plan.pdf", 
+                            LocalDateTime.now().minusDays(15), 1.3, 92.0, "Hervorragende Analyse!");
+                    // SoftArch: Pending
+                    createPendingSubmission(student1, seriesG4_SoftArch);
                 }
-                
-                if (demoStudent2 != null) {
-                    initDemoStudentSubmissions(demoStudent2, pendingEmptySeries, progressSeries, submittedSeries, 
-                            submittedClosedSeries, overdueSeries, gradedSeries, dueSoonSeries);
+
+                if (student2 != null) {
+                    // SE Project: In Progress (Pending with document)
+                    createPendingSubmissionWithDocument(student2, seriesG4_SE, "draft.pdf", LocalDateTime.now().minusDays(1));
+                    // ProjMgmt: Graded
+                    createGradedSubmissionWithDocument(student2, seriesG4_ProjMgmt, "mgmt.pdf", 
+                            LocalDateTime.now().minusDays(12), 2.7, 75.0, "Gute Ansätze, aber lückenhaft.");
+                    // SoftArch: Pending
+                    createPendingSubmission(student2, seriesG4_SoftArch);
                 }
 
                 System.out.println("=================================================================");
@@ -464,52 +379,47 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void initDemoStudentSubmissions(AppUser student, CourseSeries pending, CourseSeries progress, 
-                                           CourseSeries submitted, CourseSeries submittedClosed, 
-                                           CourseSeries overdue, CourseSeries graded, CourseSeries dueSoon) {
-        // 1. Ausstehend
-        createPendingSubmission(student, pending);
+    private LocalDateTime createSchedule(CourseSeries series, Room room, int dayOfWeek, int hour, int minute, int weeks) {
+        LocalDateTime base = LocalDateTime.of(2026, 4, 1, hour, minute, 0, 0);
+        while (base.getDayOfWeek().getValue() != dayOfWeek) {
+            base = base.plusDays(1);
+        }
 
-        // 2. In Bearbeitung
-        createPendingSubmissionWithDocument(
-                student,
-                progress,
-                "studienarbeit-entwurf.pdf",
-                LocalDateTime.now().minusDays(1)
-        );
+        LocalDateTime lastTime = null;
+        for (int i = 0; i < weeks; i++) {
+            LocalDateTime startTime = base.plusWeeks(i);
+            eventRepository.save(Event.builder()
+                    .courseSeries(series)
+                    .rooms(room != null ? Set.of(room) : Set.of())
+                    .name(series.getModule().getName())
+                    .eventType(EventType.LEHRVERANSTALTUNG)
+                    .startTime(startTime)
+                    .durationMinutes(195)
+                    .build());
+            lastTime = startTime;
+        }
+        return lastTime;
+    }
 
-        // 3. Eingereicht
-        createSubmittedSubmissionWithDocument(
-                student,
-                submitted,
-                "referat-final.pdf",
-                LocalDateTime.now().minusDays(1)
-        );
+    private void attemptAddExam(CourseSeries series, Room room, LocalDateTime lastLectureTime) {
+        if (series.getSelectedExamType() == null || lastLectureTime == null || series.getStatus() == CourseStatus.PLANNED) return;
+        String type = series.getSelectedExamType().getType();
+        if ("KL".equals(type) || "RF".equals(type)) {
+            // Use the same time window as the lectures (which is already in lastLectureTime)
+            // startTime is already rounded to 15m from createSchedule
+            addExamEvent(series, room, lastLectureTime.plusWeeks(1));
+        }
+    }
 
-        // 4. Frist abgelaufen – eingereicht
-        createSubmittedSubmissionWithDocument(
-                student,
-                submittedClosed,
-                "studienarbeit-final.pdf",
-                LocalDateTime.now().minusDays(4)
-        );
-
-        // 5. Überfällig / nicht eingereicht
-        createPendingSubmission(student, overdue);
-
-        // 6. Bewertet
-        createGradedSubmissionWithDocument(
-                student,
-                graded,
-                "studienarbeit-bewertet.pdf",
-                LocalDateTime.now().minusDays(12),
-                1.7,
-                88.0,
-                "Gute Struktur, saubere Argumentation."
-        );
-
-        // 7. Bald fällig
-        createPendingSubmission(student, dueSoon);
+    private void addExamEvent(CourseSeries series, Room room, LocalDateTime dateTime) {
+        eventRepository.save(Event.builder()
+                .courseSeries(series)
+                .rooms(room != null ? Set.of(room) : Set.of())
+                .name("Prüfung: " + series.getModule().getName())
+                .eventType(EventType.KLAUSUR)
+                .startTime(dateTime.withSecond(0).withNano(0))
+                .durationMinutes(90)
+                .build());
     }
 
     private AppUser createLecturer(Salutation salutation, AcademicTitle title, String first, String last, String email) {

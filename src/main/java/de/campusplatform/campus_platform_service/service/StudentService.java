@@ -44,7 +44,7 @@ public class StudentService {
         AppUser user = appUserRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return courseSeriesRepository.findActiveCourseSeriesByStudentUserId(user.getId())
+        return courseSeriesRepository.findNonPlannedCourseSeriesByStudentUserId(user.getId())
                 .stream()
                 .map(this::mapToCourseResponse)
                 .collect(Collectors.toList());
