@@ -20,6 +20,9 @@ public class Module {
     private Integer semester;
     private Integer requiredTotalHours;
 
+    @Column(name = "ects")
+    private Integer ects;
+
     @ManyToMany
     @JoinTable(
         name = "module_exam_types",

@@ -7,6 +7,7 @@ import de.campusplatform.campus_platform_service.repository.InstitutionRepositor
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
 import de.campusplatform.campus_platform_service.service.AuthService;
 import de.campusplatform.campus_platform_service.service.FaqService;
+import de.campusplatform.campus_platform_service.service.StudentDashboardService;
 import de.campusplatform.campus_platform_service.service.StudentSubmissionService;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,18 +28,21 @@ public class UserController {
     private final InstitutionRepository institutionRepository;
     private final FaqService faqService;
     private final StudentSubmissionService studentSubmissionService;
+    private final StudentDashboardService studentDashboardService;
 
 
     public UserController(AuthService authService,
                           RoomRepository roomRepository,
                           InstitutionRepository institutionRepository,
                           FaqService faqService,
-                          StudentSubmissionService studentSubmissionService) {
+                          StudentSubmissionService studentSubmissionService,
+                          StudentDashboardService studentDashboardService) {
         this.authService = authService;
         this.roomRepository = roomRepository;
         this.institutionRepository = institutionRepository;
         this.faqService = faqService;
         this.studentSubmissionService = studentSubmissionService;
+        this.studentDashboardService = studentDashboardService;
     }
 
     @GetMapping("/institution")
@@ -85,6 +89,14 @@ public class UserController {
     ) {
         authService.changePassword(userDetails.getUsername(), request);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/dashboard")
+    public ResponseEntity<StudentDashboardResponse> getStudentDashboard(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(
+            studentDashboardService.getDashboard(userDetails.getUsername())
+        );
     }
 
     // FAQ
