@@ -18,10 +18,12 @@ import de.campusplatform.campus_platform_service.repository.SpecializationReposi
 import de.campusplatform.campus_platform_service.model.CourseOfStudy;
 import de.campusplatform.campus_platform_service.model.Specialization;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -108,12 +110,26 @@ public class AdminController {
 
     @GetMapping("/rooms/available")
     public ResponseEntity<List<Room>> getAvailableRooms(
-            @RequestParam(required = false) LocalDateTime startTime,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @RequestParam(required = false) Integer durationMinutes,
             @RequestParam(required = false) Long excludeEventId,
             @RequestParam(required = false) Long seriesId,
             @RequestParam(required = false) String eventType) {
         return ResponseEntity.ok(eventService.getAvailableRooms(startTime, durationMinutes, excludeEventId, seriesId, eventType));
+    }
+
+    @GetMapping("/rooms/schedule")
+    public ResponseEntity<List<RoomScheduleEventResponse>> getRoomSchedule(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+        return ResponseEntity.ok(eventService.getRoomSchedule(start, end));
+    }
+
+    @GetMapping("/rooms/utilization")
+    public ResponseEntity<List<RoomUtilizationResponse>> getRoomUtilizations(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(eventService.getRoomUtilizations(startDate, endDate));
     }
 
     @PostMapping("/rooms")
