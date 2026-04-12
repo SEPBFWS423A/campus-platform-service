@@ -26,10 +26,8 @@ public class UserController {
     private final AuthService authService;
     private final RoomRepository roomRepository;
     private final InstitutionRepository institutionRepository;
-    private final FaqService faqService;
     private final StudentSubmissionService studentSubmissionService;
     private final StudentGradeService studentGradeService;
-    private final GradeScaleService gradeScaleService;
 
 
     @GetMapping("/institution")
@@ -78,11 +76,6 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-    // FAQ
-    @GetMapping("/faqs")
-    public List<FaqResponse> getVisibleFaqs(@RequestParam(defaultValue = "de") String lang) {
-        return faqService.getVisibleFaqs(lang);
-    }
 
     // STUDENT SUBMISSIONS
 
@@ -179,10 +172,5 @@ public class UserController {
         return ResponseEntity.ok(
                 studentGradeService.getOverviewForStudent(userDetails.appUser().getId())
         );
-    }
-
-    @GetMapping("/grade-scale")
-    public ResponseEntity<GradeScaleResponse> getGradeScale() {
-        return ResponseEntity.ok(gradeScaleService.getGradeScaleResponse());
     }
 }

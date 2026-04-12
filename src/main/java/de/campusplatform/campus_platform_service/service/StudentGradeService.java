@@ -27,9 +27,20 @@ import de.campusplatform.campus_platform_service.repository.StudyGroupMembership
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -66,7 +77,6 @@ public class StudentGradeService {
         }
 
         List<CourseSeries> visibleCourseSeries = courseSeriesRepository.findVisibleForStudentGradeOverview(ownStudyGroupIds);
-
         if (visibleCourseSeries.isEmpty()) {
             return emptyResponse();
         }
@@ -80,28 +90,46 @@ public class StudentGradeService {
 
         Map<Long, StudentCourseSubmission> latestOwnSubmissionByCourseSeries = ownSubmissions.stream()
                 .collect(Collectors.toMap(
-                        s -> s.getCourseSeries().getId(),
+                        submission -> submission.getCourseSeries().getId(),
                         Function.identity(),
-                        this::pickNewerSubmission
+                        this::pickNewerSubmission,
+                        HashMap::new
                 ));
 
         Set<Long> ownStudyGroupIdSet = new HashSet<>(ownStudyGroupIds);
 
-        List<StudentGradeOverviewItemResponse> items = visibleCourseSeries.stream()
+        List<StudentGradeOverviewItemResponse> rawItems = visibleCourseSeries.stream()
                 .map(courseSeries -> toOverviewItem(
                         courseSeries,
                         latestOwnSubmissionByCourseSeries.get(courseSeries.getId()),
                         ownStudyGroupIdSet
                 ))
-                .sorted(Comparator
-                        .comparing(StudentGradeOverviewItemResponse::getModuleSemester, Comparator.nullsLast(Integer::compareTo))
-                        .thenComparing(StudentGradeOverviewItemResponse::getModuleName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
-                        .thenComparing(StudentGradeOverviewItemResponse::getExamDate, Comparator.nullsLast(LocalDate::compareTo)))
                 .toList();
 
-        StudentGradeSummaryResponse summary = buildSummary(items, studentProfile, visibleCourseSeries);
+        // 1) Anzeige: ALLE zugeordneten Kurse / Module anzeigen
+        List<StudentGradeOverviewItemResponse> displayItems = rawItems.stream()
+                .sorted(Comparator
+                        .comparing(StudentGradeOverviewItemResponse::getModuleSemester, Comparator.nullsLast(Integer::compareTo))
+                        .thenComparing(StudentGradeOverviewItemResponse::getExamDate, Comparator.nullsLast(LocalDate::compareTo))
+                        .thenComparing(StudentGradeOverviewItemResponse::getModuleName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(StudentGradeOverviewItemResponse::getCourseSeriesId, Comparator.nullsLast(Long::compareTo)))
+                .toList();
 
-        List<StudentGradeSemesterGroupResponse> semesters = items.stream()
+        // 2) Summary: pro Modul nur den neuesten Versuch berücksichtigen
+        List<StudentGradeOverviewItemResponse> summaryItems = rawItems.stream()
+                .collect(Collectors.toMap(
+                        StudentGradeOverviewItemResponse::getModuleId,
+                        Function.identity(),
+                        this::pickLatestModuleItem,
+                        LinkedHashMap::new
+                ))
+                .values()
+                .stream()
+                .toList();
+
+        StudentGradeSummaryResponse summary = buildSummary(summaryItems, studentProfile, visibleCourseSeries);
+
+        List<StudentGradeSemesterGroupResponse> semesters = displayItems.stream()
                 .collect(Collectors.groupingBy(
                         StudentGradeOverviewItemResponse::getModuleSemester,
                         TreeMap::new,
@@ -305,13 +333,59 @@ public class StudentGradeService {
         return leftTime.isAfter(rightTime) ? left : right;
     }
 
+    private StudentGradeOverviewItemResponse pickLatestModuleItem(
+            StudentGradeOverviewItemResponse left,
+            StudentGradeOverviewItemResponse right
+    ) {
+        int leftAttempt = left.getAttemptNumber() != null ? left.getAttemptNumber() : 1;
+        int rightAttempt = right.getAttemptNumber() != null ? right.getAttemptNumber() : 1;
+
+        if (leftAttempt != rightAttempt) {
+            return leftAttempt > rightAttempt ? left : right;
+        }
+
+        LocalDateTime leftUpdated = left.getLastUpdatedAt();
+        LocalDateTime rightUpdated = right.getLastUpdatedAt();
+
+        if (leftUpdated != null && rightUpdated != null && !leftUpdated.equals(rightUpdated)) {
+            return leftUpdated.isAfter(rightUpdated) ? left : right;
+        }
+
+        LocalDate leftExamDate = left.getExamDate();
+        LocalDate rightExamDate = right.getExamDate();
+
+        if (leftExamDate != null && rightExamDate != null && !leftExamDate.equals(rightExamDate)) {
+            return leftExamDate.isAfter(rightExamDate) ? left : right;
+        }
+
+        if (leftUpdated == null && rightUpdated != null) {
+            return right;
+        }
+        if (leftUpdated != null && rightUpdated == null) {
+            return left;
+        }
+
+        if (Objects.equals(left.getCourseSeriesId(), right.getCourseSeriesId())) {
+            return left;
+        }
+
+        if (left.getCourseSeriesId() == null) {
+            return right;
+        }
+        if (right.getCourseSeriesId() == null) {
+            return left;
+        }
+
+        return left.getCourseSeriesId() > right.getCourseSeriesId() ? left : right;
+    }
+
     private StudentGradeSummaryResponse buildSummary(
             List<StudentGradeOverviewItemResponse> items,
             StudentProfile studentProfile,
             List<CourseSeries> visibleCourseSeries
     ) {
         int gradedAssessmentsCount = (int) items.stream()
-                .filter(item -> item.getStatus() == StudentGradeStatus.PASSED || item.getStatus() == StudentGradeStatus.FAILED)
+                .filter(this::isFinalizedAssessment)
                 .count();
 
         int pendingAssessmentsCount = (int) items.stream()
@@ -330,22 +404,15 @@ public class StudentGradeService {
                 .filter(item -> item.getStatus() == StudentGradeStatus.EXCLUDED)
                 .count();
 
-        Map<Long, StudentGradeOverviewItemResponse> latestByModule = items.stream()
-                .collect(Collectors.toMap(
-                        StudentGradeOverviewItemResponse::getModuleId,
-                        Function.identity(),
-                        this::pickCurrentModuleItem
-                ));
-
-        int passedModulesCount = (int) latestByModule.values().stream()
+        int passedModulesCount = (int) items.stream()
                 .filter(item -> item.getStatus() == StudentGradeStatus.PASSED)
                 .count();
 
-        int failedModulesCount = (int) latestByModule.values().stream()
+        int failedModulesCount = (int) items.stream()
                 .filter(item -> item.getStatus() == StudentGradeStatus.FAILED)
                 .count();
 
-        int achievedEcts = latestByModule.values().stream()
+        int achievedEcts = items.stream()
                 .filter(item -> item.getStatus() == StudentGradeStatus.PASSED)
                 .map(StudentGradeOverviewItemResponse::getEcts)
                 .filter(Objects::nonNull)
@@ -353,8 +420,8 @@ public class StudentGradeService {
                 .sum();
 
         Double currentAverage = calculateWeightedAverage(
-                latestByModule.values().stream()
-                        .filter(item -> item.getStatus() == StudentGradeStatus.PASSED || item.getStatus() == StudentGradeStatus.FAILED)
+                items.stream()
+                        .filter(this::isNumericGradedItem)
                         .toList()
         );
 
@@ -374,28 +441,17 @@ public class StudentGradeService {
                 .build();
     }
 
-    private StudentGradeOverviewItemResponse pickCurrentModuleItem(
-            StudentGradeOverviewItemResponse left,
-            StudentGradeOverviewItemResponse right
-    ) {
-        int leftAttempt = left.getAttemptNumber() != null ? left.getAttemptNumber() : 1;
-        int rightAttempt = right.getAttemptNumber() != null ? right.getAttemptNumber() : 1;
+    private boolean isNumericGradedItem(StudentGradeOverviewItemResponse item) {
+        return item.getGrade() != null
+                && (item.getStatus() == StudentGradeStatus.PASSED || item.getStatus() == StudentGradeStatus.FAILED);
+    }
 
-        if (leftAttempt != rightAttempt) {
-            return leftAttempt > rightAttempt ? left : right;
-        }
-
-        LocalDateTime leftTime = left.getLastUpdatedAt();
-        LocalDateTime rightTime = right.getLastUpdatedAt();
-
-        if (leftTime == null) {
-            return right;
-        }
-        if (rightTime == null) {
-            return left;
-        }
-
-        return leftTime.isAfter(rightTime) ? left : right;
+    private boolean isFinalizedAssessment(StudentGradeOverviewItemResponse item) {
+        return item.getStatus() == StudentGradeStatus.PASSED
+                || item.getStatus() == StudentGradeStatus.FAILED
+                || item.getStatus() == StudentGradeStatus.EXCUSED_ABSENCE
+                || item.getStatus() == StudentGradeStatus.UNEXCUSED_ABSENCE
+                || item.getStatus() == StudentGradeStatus.EXCLUDED;
     }
 
     private Double calculateWeightedAverage(Collection<StudentGradeOverviewItemResponse> items) {
@@ -403,18 +459,26 @@ public class StudentGradeService {
         int totalWeight = 0;
 
         for (StudentGradeOverviewItemResponse item : items) {
-            if (item.getGrade() == null || item.getEcts() == null) {
+            if (item.getGrade() == null) {
                 continue;
             }
-            weightedSum += item.getGrade() * item.getEcts();
-            totalWeight += item.getEcts();
+
+            int weight = item.getEcts() != null && item.getEcts() > 0 ? item.getEcts() : 1;
+            weightedSum += item.getGrade() * weight;
+            totalWeight += weight;
         }
 
         if (totalWeight == 0) {
             return null;
         }
 
-        return Math.round((weightedSum / totalWeight) * 100.0) / 100.0;
+        return roundToOneDecimal(weightedSum / totalWeight);
+    }
+
+    private Double roundToOneDecimal(double value) {
+        return BigDecimal.valueOf(value)
+                .setScale(1, RoundingMode.HALF_UP)
+                .doubleValue();
     }
 
     private Integer resolveTotalEcts(StudentProfile studentProfile, List<CourseSeries> visibleCourseSeries) {
