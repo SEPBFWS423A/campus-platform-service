@@ -22,16 +22,70 @@ public class LecturerService {
     private final AppUserRepository userRepository;
     private final ExamDocumentRepository documentRepository;
     private final GradeScaleService gradeScaleService;
+    private final EventRepository eventRepository;
 
     public LecturerService(CourseSeriesRepository courseSeriesRepository,
                            StudentCourseSubmissionRepository submissionRepository,
                            AppUserRepository userRepository,
-                           ExamDocumentRepository documentRepository, GradeScaleService gradeScaleService) {
+                           ExamDocumentRepository documentRepository, GradeScaleService gradeScaleService, EventRepository eventRepository) {
         this.courseSeriesRepository = courseSeriesRepository;
         this.submissionRepository = submissionRepository;
         this.userRepository = userRepository;
         this.documentRepository = documentRepository;
         this.gradeScaleService = gradeScaleService;
+        this.eventRepository = eventRepository;
+    }
+
+    public List<LecturerEventResponse> getTimetableEvents(Long lecturerId) {
+        return eventRepository.findByAssignedLecturerId(lecturerId).stream()
+                .map(this::mapToLecturerEventResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<LecturerActiveCourseResponse> getActiveCourseSeries(Long lecturerId) {
+        return courseSeriesRepository.findByAssignedLecturerIdAndStatus(lecturerId, de.campusplatform.campus_platform_service.enums.CourseStatus.ACTIVE).stream()
+                .map(this::mapToLecturerActiveCourseResponse)
+                .collect(Collectors.toList());
+    }
+
+    private LecturerEventResponse mapToLecturerEventResponse(Event event) {
+        List<String> studyGroups = event.getCourseSeries().getStudyGroups().stream()
+                .map(sg -> sg.getName())
+                .collect(Collectors.toList());
+
+        List<String> rooms = event.getRooms().stream()
+                .map(de.campusplatform.campus_platform_service.model.Room::getName)
+                .collect(Collectors.toList());
+
+        return new LecturerEventResponse(
+                event.getId(),
+                event.getName(),
+                event.getEventType(),
+                event.getStartTime(),
+                event.getDurationMinutes(),
+                event.getCourseSeries().getModule().getName(),
+                studyGroups,
+                rooms
+        );
+    }
+
+    private LecturerActiveCourseResponse mapToLecturerActiveCourseResponse(CourseSeries cs) {
+        List<String> studyGroups = cs.getStudyGroups().stream()
+                .map(sg -> sg.getName())
+                .collect(Collectors.toList());
+
+        long attendeeCount = userRepository.findStudentsByCourseSeriesId(cs.getId()).size();
+
+        return new LecturerActiveCourseResponse(
+                cs.getId(),
+                cs.getModule().getName(),
+                studyGroups,
+                cs.getStatus(),
+                cs.getSelectedExamType() != null ? cs.getSelectedExamType().getNameDe() : "None",
+                cs.getSelectedExamType() != null && cs.getSelectedExamType().isSubmission(),
+                cs.getSubmissionDeadline(),
+                attendeeCount
+        );
     }
 
     public List<LecturerCourseResponse> getCoursesForLecturer(Long lecturerId) {
@@ -176,18 +230,33 @@ public class LecturerService {
         Map<Long, StudentCourseSubmission> submissionMap = submissionRepository.findByCourseSeriesId(seriesId).stream()
                 .collect(Collectors.toMap(s -> s.getStudent().getId(), s -> s));
 
+        CourseSeries series = courseSeriesRepository.findById(seriesId)
+                .orElseThrow(() -> new AppException("error.courseSeries.notFound"));
+        
+        List<Long> seriesGroupIds = series.getStudyGroups().stream()
+                .map(StudyGroup::getId)
+                .collect(Collectors.toList());
+
         return students.stream()
                 .map(student -> {
                     StudentCourseSubmission sub = submissionMap.get(student.getId());
+                    String studyGroupName = student.getStudentProfile() != null ? 
+                            student.getStudentProfile().getMemberships().stream()
+                                .filter(m -> seriesGroupIds.contains(m.getStudyGroup().getId()))
+                                .map(m -> m.getStudyGroup().getName())
+                                .findFirst().orElse(null) : null;
+
                     return new StudentSubmissionResponse(
                             student.getId(),
                             student.getFirstName() + " " + student.getLastName(),
                             student.getStudentProfile() != null ? student.getStudentProfile().getStudentNumber() : null,
                             sub != null ? sub.getStatus() : SubmissionStatus.PENDING,
-                            sub != null ? resolveDocumentValue(sub) : null,                            sub != null ? sub.getSubmissionDate() : null,
+                            sub != null ? resolveDocumentValue(sub) : null,
+                            sub != null ? sub.getSubmissionDate() : null,
                             sub != null ? sub.getGrade() : null,
                             sub != null ? sub.getPoints() : null,
-                            sub != null ? sub.getFeedback() : null
+                            sub != null ? sub.getFeedback() : null,
+                            studyGroupName
                     );
                 })
                 .collect(Collectors.toList());
@@ -280,6 +349,16 @@ public class LecturerService {
             courseSeriesRepository.save(cs);
         }
 
+        List<Long> seriesGroupIds = cs.getStudyGroups().stream()
+                .map(StudyGroup::getId)
+                .collect(Collectors.toList());
+
+        String studyGroupName = saved.getStudent().getStudentProfile() != null ?
+                saved.getStudent().getStudentProfile().getMemberships().stream()
+                        .filter(m -> seriesGroupIds.contains(m.getStudyGroup().getId()))
+                        .map(m -> m.getStudyGroup().getName())
+                        .findFirst().orElse(null) : null;
+
         return new StudentSubmissionResponse(
                 saved.getStudent().getId(),
                 saved.getStudent().getFirstName() + " " + saved.getStudent().getLastName(),
@@ -289,7 +368,8 @@ public class LecturerService {
                 saved.getSubmissionDate(),
                 saved.getGrade(),
                 saved.getPoints(),
-                saved.getFeedback()
+                saved.getFeedback(),
+                studyGroupName
         );
     }
 
