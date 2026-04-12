@@ -43,7 +43,7 @@ public class LecturerService {
     }
 
     public List<LecturerActiveCourseResponse> getActiveCourseSeries(Long lecturerId) {
-        return courseSeriesRepository.findByAssignedLecturerIdAndStatus(lecturerId, de.campusplatform.campus_platform_service.enums.CourseStatus.ACTIVE).stream()
+        return courseSeriesRepository.findByAssignedLecturerIdAndStatusNot(lecturerId, de.campusplatform.campus_platform_service.enums.CourseStatus.PLANNED).stream()
                 .map(this::mapToLecturerActiveCourseResponse)
                 .collect(Collectors.toList());
     }
