@@ -24,6 +24,9 @@ public class CourseOfStudy {
     @Enumerated(EnumType.STRING)
     private DegreeType degreeType;
 
+    @Column(name = "total_ects")
+    private Integer totalEcts;
+
     @OneToMany(mappedBy = "courseOfStudy", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Specialization> specializations;
 
