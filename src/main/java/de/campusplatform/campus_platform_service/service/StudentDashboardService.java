@@ -24,8 +24,11 @@ import java.util.List;
 import java.util.OptionalDouble;
 import java.util.stream.Collectors;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class StudentDashboardService {
 
     private final AppUserRepository userRepository;
