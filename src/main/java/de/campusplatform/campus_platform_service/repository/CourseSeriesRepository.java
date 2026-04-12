@@ -10,6 +10,7 @@ import java.util.List;
 @Repository
 public interface CourseSeriesRepository extends JpaRepository<CourseSeries, Long> {
     List<CourseSeries> findByAssignedLecturerId(Long lecturerId);
+    List<CourseSeries> findByAssignedLecturerIdAndStatus(Long lecturerId, de.campusplatform.campus_platform_service.enums.CourseStatus status);
     List<CourseSeries> findDistinctByModuleIdAndStudyGroups_IdIn(Long moduleId, Collection<Long> studyGroupIds);
 
     @org.springframework.data.jpa.repository.Query("SELECT DISTINCT cs FROM CourseSeries cs " +

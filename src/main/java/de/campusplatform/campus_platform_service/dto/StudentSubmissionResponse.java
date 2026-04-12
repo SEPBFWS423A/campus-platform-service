@@ -13,5 +13,6 @@ public record StudentSubmissionResponse(
         LocalDateTime submissionDate,
         Double grade,
         Double points,
-        String feedback
+        String feedback,
+        String studyGroupName
 ) {}
