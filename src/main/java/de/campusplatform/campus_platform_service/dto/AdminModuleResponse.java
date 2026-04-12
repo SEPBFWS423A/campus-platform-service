@@ -8,7 +8,7 @@ public record AdminModuleResponse(
         String name,
         Integer semester,
         Integer requiredTotalHours,
-        List<ExamTypeDTO> possibleExamTypes,
+        Integer ects, List<ExamTypeDTO> possibleExamTypes,
         Long preferredExamTypeId,
         List<LecturerDTO> lecturers,
         Long courseOfStudyId,

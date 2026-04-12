@@ -41,7 +41,35 @@ public class StudentCourseSubmission {
     private Long extensionGrantedBy;
     private boolean lateSubmissionAllowed;
 
+    // TODO: Versuchsanzahl - Herleitung noch nicht klar!
+    @Column(name = "attempt_number", nullable = false)
+    @Builder.Default
+    private Integer attemptNumber = 1;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
     @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private Set<SubmissionDocument> documents = new HashSet<>();
+
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        updatedAt = now;
+        if (attemptNumber == null) {
+            attemptNumber = 1;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

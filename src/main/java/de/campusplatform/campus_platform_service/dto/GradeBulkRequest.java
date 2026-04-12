@@ -1,5 +1,7 @@
 package de.campusplatform.campus_platform_service.dto;
 
+import de.campusplatform.campus_platform_service.enums.SubmissionStatus;
+
 import java.util.List;
 
 public record GradeBulkRequest(
@@ -9,6 +11,8 @@ public record GradeBulkRequest(
             Long studentId,
             Double grade,
             Double points,
-            String feedback
-    ) {}
+            String feedback,
+            SubmissionStatus status
+    ) {
+    }
 }

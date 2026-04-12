@@ -2,10 +2,17 @@ package de.campusplatform.campus_platform_service.service;
 
 import de.campusplatform.campus_platform_service.dto.AdminModuleResponse;
 import de.campusplatform.campus_platform_service.dto.ModuleRequest;
-import de.campusplatform.campus_platform_service.exception.AppException;
 import de.campusplatform.campus_platform_service.enums.Role;
-import de.campusplatform.campus_platform_service.model.*;
-import de.campusplatform.campus_platform_service.repository.*;
+import de.campusplatform.campus_platform_service.exception.AppException;
+import de.campusplatform.campus_platform_service.model.AppUser;
+import de.campusplatform.campus_platform_service.model.CourseOfStudy;
+import de.campusplatform.campus_platform_service.model.ModuleLecturer;
+import de.campusplatform.campus_platform_service.model.Specialization;
+import de.campusplatform.campus_platform_service.repository.AppUserRepository;
+import de.campusplatform.campus_platform_service.repository.CourseOfStudyRepository;
+import de.campusplatform.campus_platform_service.repository.ExamTypeRepository;
+import de.campusplatform.campus_platform_service.repository.ModuleRepository;
+import de.campusplatform.campus_platform_service.repository.SpecializationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,13 +37,14 @@ public class ModuleService {
                 .map((de.campusplatform.campus_platform_service.model.Module module) -> {
                     List<AdminModuleResponse.ExamTypeDTO> examTypes = module.getPossibleExamTypes().stream()
                             .map(type -> new AdminModuleResponse.ExamTypeDTO(
-                                type.getId(), 
-                                type.getType(), 
-                                type.getNameDe(), 
-                                type.getNameEn(), 
-                                type.getShortDe(), 
-                                type.getShortEn(),
-                                type.isSubmission()))
+                                    type.getId(),
+                                    type.getType(),
+                                    type.getNameDe(),
+                                    type.getNameEn(),
+                                    type.getShortDe(),
+                                    type.getShortEn(),
+                                    type.isSubmission()
+                            ))
                             .collect(Collectors.toList());
 
                     List<AdminModuleResponse.LecturerDTO> lecturers = module.getQualifiedLecturers().stream()
@@ -53,6 +61,7 @@ public class ModuleService {
                             module.getName(),
                             module.getSemester(),
                             module.getRequiredTotalHours(),
+                            module.getEcts(),
                             examTypes,
                             module.getPreferredExamType() != null ? module.getPreferredExamType().getId() : null,
                             lecturers,
@@ -74,19 +83,23 @@ public class ModuleService {
                     .orElseThrow(() -> new AppException("error.specialization.notFound"));
         }
 
-        de.campusplatform.campus_platform_service.model.Module module = de.campusplatform.campus_platform_service.model.Module.builder()
-                .name(request.name())
-                .semester(request.semester())
-                .requiredTotalHours(request.requiredTotalHours())
-                .possibleExamTypes(request.examTypeIds() != null ? 
-                    request.examTypeIds().stream()
-                        .map(etId -> examTypeRepository.findById(etId).orElseThrow())
-                        .collect(Collectors.toSet()) : Set.of())
-                .courseOfStudy(cos)
-                .specialization(spec)
-                .preferredExamType(request.preferredExamTypeId() != null ? 
-                    examTypeRepository.findById(request.preferredExamTypeId()).orElseThrow() : null)
-                .build();
+        de.campusplatform.campus_platform_service.model.Module module =
+                de.campusplatform.campus_platform_service.model.Module.builder()
+                        .name(request.name())
+                        .semester(request.semester())
+                        .requiredTotalHours(request.requiredTotalHours())
+                        .ects(request.ects())
+                        .possibleExamTypes(request.examTypeIds() != null
+                                ? request.examTypeIds().stream()
+                                  .map(etId -> examTypeRepository.findById(etId).orElseThrow())
+                                  .collect(Collectors.toSet())
+                                : Set.of())
+                        .courseOfStudy(cos)
+                        .specialization(spec)
+                        .preferredExamType(request.preferredExamTypeId() != null
+                                ? examTypeRepository.findById(request.preferredExamTypeId()).orElseThrow()
+                                : null)
+                        .build();
 
         de.campusplatform.campus_platform_service.model.Module savedModule = moduleRepository.save(module);
 
@@ -105,6 +118,7 @@ public class ModuleService {
                                 .build();
                     })
                     .collect(Collectors.toSet());
+
             savedModule.setQualifiedLecturers(lecturers);
             moduleRepository.save(savedModule);
         }
@@ -127,24 +141,30 @@ public class ModuleService {
         module.setName(request.name());
         module.setSemester(request.semester());
         module.setRequiredTotalHours(request.requiredTotalHours());
-        module.setPossibleExamTypes(request.examTypeIds() != null ? 
-                request.examTypeIds().stream()
-                    .map(etId -> examTypeRepository.findById(etId).orElseThrow())
-                    .collect(Collectors.toSet()) : Set.of());
+        module.setEcts(request.ects());
+        module.setPossibleExamTypes(request.examTypeIds() != null
+                ? request.examTypeIds().stream()
+                  .map(etId -> examTypeRepository.findById(etId).orElseThrow())
+                  .collect(Collectors.toSet())
+                : Set.of());
         module.setCourseOfStudy(cos);
         module.setSpecialization(spec);
-        module.setPreferredExamType(request.preferredExamTypeId() != null ? 
-                examTypeRepository.findById(request.preferredExamTypeId()).orElseThrow() : null);
+        module.setPreferredExamType(request.preferredExamTypeId() != null
+                ? examTypeRepository.findById(request.preferredExamTypeId()).orElseThrow()
+                : null);
 
         de.campusplatform.campus_platform_service.model.Module savedModule = moduleRepository.save(module);
 
         if (request.lecturerIds() != null) {
-            // Update qualified lecturers
             savedModule.getQualifiedLecturers().clear();
+
             Set<ModuleLecturer> lecturers = request.lecturerIds().stream()
                     .map(lid -> {
                         AppUser lecturer = userRepository.findById(lid)
                                 .orElseThrow(() -> new AppException("error.user.notFound"));
+                        if (lecturer.getRole() != Role.LECTURER) {
+                            throw new AppException("error.user.notLecturer");
+                        }
                         return ModuleLecturer.builder()
                                 .module(savedModule)
                                 .lecturer(lecturer)
@@ -152,6 +172,7 @@ public class ModuleService {
                                 .build();
                     })
                     .collect(Collectors.toSet());
+
             savedModule.getQualifiedLecturers().addAll(lecturers);
             moduleRepository.save(savedModule);
         }
