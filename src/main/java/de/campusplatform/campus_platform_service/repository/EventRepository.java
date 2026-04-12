@@ -49,4 +49,13 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                               @Param("excludeId") Long excludeId);
   
     boolean existsByCourseSeriesIdAndEventType(Long courseSeriesId, de.campusplatform.campus_platform_service.enums.EventType eventType);
+
+    @Query("SELECT DISTINCT e FROM Event e " +
+           "JOIN e.courseSeries cs " +
+           "JOIN cs.studyGroups sg " +
+           "JOIN sg.memberships m " +
+           "WHERE m.student.userId = :userId " +
+           "AND e.startTime >= :startTime " +
+           "ORDER BY e.startTime ASC")
+    List<Event> findUpcomingEventsByStudentUserId(@Param("userId") Long userId, @Param("startTime") LocalDateTime startTime);
 }
