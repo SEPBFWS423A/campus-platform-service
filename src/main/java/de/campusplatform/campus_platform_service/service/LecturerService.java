@@ -65,7 +65,8 @@ public class LecturerService {
                 event.getDurationMinutes(),
                 event.getCourseSeries().getModule().getName(),
                 studyGroups,
-                rooms
+                rooms,
+                event.getCourseSeries().getSelectedExamType() != null && event.getCourseSeries().getSelectedExamType().isSubmission()
         );
     }
 
@@ -303,7 +304,18 @@ public class LecturerService {
     public void publishGrades(Long seriesId) {
         CourseSeries cs = courseSeriesRepository.findById(seriesId)
                 .orElseThrow(() -> new AppException("error.courseSeries.notFound"));
-        
+
+        List<AppUser> students = userRepository.findStudentsByCourseSeriesId(seriesId);
+        List<StudentCourseSubmission> submissions = submissionRepository.findByCourseSeriesId(seriesId);
+
+        long gradedCount = submissions.stream()
+                .filter(s -> s.getGrade() != null)
+                .count();
+
+        if (gradedCount < students.size()) {
+            throw new AppException("error.publish.notAllGraded");
+        }
+
         cs.setExamStatus(ExamStatus.COMPLETED);
         courseSeriesRepository.save(cs);
     }

@@ -39,7 +39,12 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                    @Param("end") LocalDateTime end,
                    @Param("excludeId") Long excludeId);
 
-    @Query("SELECT e FROM Event e WHERE e.courseSeries.assignedLecturer.id = :lecturerId ORDER BY e.startTime ASC")
+    @Query("SELECT e FROM Event e " +
+           "JOIN FETCH e.courseSeries cs " +
+           "LEFT JOIN FETCH cs.selectedExamType " +
+           "LEFT JOIN FETCH e.rooms " +
+           "WHERE cs.assignedLecturer.id = :lecturerId " +
+           "ORDER BY e.startTime ASC")
     List<Event> findByAssignedLecturerId(@Param("lecturerId") Long lecturerId);
 
     @Query("SELECT DISTINCT e FROM Event e JOIN e.courseSeries cs JOIN cs.studyGroups sg WHERE sg.id IN :groupIds " +
@@ -54,7 +59,9 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     boolean existsByCourseSeriesIdAndEventType(Long courseSeriesId, de.campusplatform.campus_platform_service.enums.EventType eventType);
 
     @Query("SELECT DISTINCT e FROM Event e " +
-           "JOIN e.courseSeries cs " +
+           "JOIN FETCH e.courseSeries cs " +
+           "LEFT JOIN FETCH cs.selectedExamType " +
+           "LEFT JOIN FETCH e.rooms " +
            "JOIN cs.studyGroups sg " +
            "JOIN sg.memberships m " +
            "WHERE m.student.userId = :userId " +

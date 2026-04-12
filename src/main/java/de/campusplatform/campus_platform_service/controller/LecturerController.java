@@ -12,7 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/lecturer")
-@PreAuthorize("hasAuthority('LECTURER')")
+@PreAuthorize("hasAnyAuthority('LECTURER', 'ADMIN')")
 public class LecturerController {
 
     private final LecturerService lecturerService;

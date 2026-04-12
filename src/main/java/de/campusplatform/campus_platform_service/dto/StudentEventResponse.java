@@ -12,6 +12,7 @@ public record StudentEventResponse(
         Integer durationMinutes,
         String moduleName,
         String lecturerName,
-        List<String> rooms
+        List<String> rooms,
+        boolean submission
 ) {
 }
