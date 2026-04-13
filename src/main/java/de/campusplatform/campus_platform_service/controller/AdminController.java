@@ -11,6 +11,7 @@ import de.campusplatform.campus_platform_service.service.CourseSeriesService;
 import de.campusplatform.campus_platform_service.service.EventService;
 import de.campusplatform.campus_platform_service.service.ModuleService;
 import de.campusplatform.campus_platform_service.service.StudyGroupService;
+import de.campusplatform.campus_platform_service.service.LecturerAbsenceService;
 import de.campusplatform.campus_platform_service.repository.InstitutionRepository;
 import de.campusplatform.campus_platform_service.model.InstitutionInfo;
 import de.campusplatform.campus_platform_service.repository.CourseOfStudyRepository;
@@ -45,6 +46,7 @@ public class AdminController {
     private final FaqService faqService;  
     private final CourseSeriesService courseSeriesService;
     private final EventService eventService;
+    private final LecturerAbsenceService lecturerAbsenceService;
 
 
     @PostMapping("/invitations")
@@ -409,6 +411,17 @@ public class AdminController {
     @PostMapping("/course-series/{seriesId}/auto-schedule")
     public ResponseEntity<Void> autoSchedule(@PathVariable Long seriesId, @RequestBody AutoScheduleRequest request) {
         eventService.autoSchedule(seriesId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/absences")
+    public ResponseEntity<List<LecturerAbsenceResponse>> getAllAbsences() {
+        return ResponseEntity.ok(lecturerAbsenceService.getAllAbsences());
+    }
+
+    @DeleteMapping("/absences/{id}")
+    public ResponseEntity<Void> deleteAbsenceAsAdmin(@PathVariable Long id) {
+        lecturerAbsenceService.deleteAbsence(id, null, true);
         return ResponseEntity.ok().build();
     }
 }

@@ -3,6 +3,7 @@ package de.campusplatform.campus_platform_service.controller;
 import de.campusplatform.campus_platform_service.dto.*;
 import de.campusplatform.campus_platform_service.security.CustomUserDetails;
 import de.campusplatform.campus_platform_service.service.LecturerService;
+import de.campusplatform.campus_platform_service.service.LecturerAbsenceService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,9 +17,11 @@ import java.util.List;
 public class LecturerController {
 
     private final LecturerService lecturerService;
+    private final LecturerAbsenceService lecturerAbsenceService;
 
-    public LecturerController(LecturerService lecturerService) {
+    public LecturerController(LecturerService lecturerService, LecturerAbsenceService lecturerAbsenceService) {
         this.lecturerService = lecturerService;
+        this.lecturerAbsenceService = lecturerAbsenceService;
     }
 
     @GetMapping("/courses")
@@ -71,5 +74,21 @@ public class LecturerController {
     @GetMapping("/course-series/{id}/student-submissions/{studentId}/download")
     public ResponseEntity<SubmissionDocumentDownloadData> downloadStudentSubmission(@PathVariable Long id, @PathVariable Long studentId) {
         return ResponseEntity.ok(lecturerService.getStudentSubmissionDocument(id, studentId));
+    }
+
+    @GetMapping("/absences")
+    public ResponseEntity<List<LecturerAbsenceResponse>> getMyAbsences(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(lecturerAbsenceService.getMyAbsences(userDetails.appUser().getId()));
+    }
+
+    @PostMapping("/absences")
+    public ResponseEntity<LecturerAbsenceResponse> createAbsence(@AuthenticationPrincipal CustomUserDetails userDetails, @RequestBody LecturerAbsenceRequest request) {
+        return ResponseEntity.ok(lecturerAbsenceService.createAbsence(userDetails.appUser().getId(), request));
+    }
+
+    @DeleteMapping("/absences/{id}")
+    public ResponseEntity<Void> deleteAbsence(@AuthenticationPrincipal CustomUserDetails userDetails, @PathVariable Long id) {
+        lecturerAbsenceService.deleteAbsence(id, userDetails.appUser().getId(), false);
+        return ResponseEntity.ok().build();
     }
 }
