@@ -5,23 +5,25 @@ import de.campusplatform.campus_platform_service.dto.StudentSubmissionListItemRe
 import de.campusplatform.campus_platform_service.dto.SubmissionDocumentDownloadData;
 import de.campusplatform.campus_platform_service.dto.SubmissionDocumentResponse;
 import de.campusplatform.campus_platform_service.dto.UploadSubmissionDocumentRequest;
+import de.campusplatform.campus_platform_service.enums.CourseStatus;
+import de.campusplatform.campus_platform_service.enums.EventType;
+import de.campusplatform.campus_platform_service.enums.ExamStatus;
 import de.campusplatform.campus_platform_service.enums.SubmissionStatus;
 import de.campusplatform.campus_platform_service.model.AppUser;
 import de.campusplatform.campus_platform_service.model.CourseSeries;
+import de.campusplatform.campus_platform_service.model.ExamType;
 import de.campusplatform.campus_platform_service.model.StudentCourseSubmission;
 import de.campusplatform.campus_platform_service.model.StudyGroup;
 import de.campusplatform.campus_platform_service.model.SubmissionDocument;
-import de.campusplatform.campus_platform_service.model.ExamType;
 import de.campusplatform.campus_platform_service.repository.AppUserRepository;
+import de.campusplatform.campus_platform_service.repository.EventRepository;
 import de.campusplatform.campus_platform_service.repository.StudentCourseSubmissionRepository;
 import de.campusplatform.campus_platform_service.repository.SubmissionDocumentRepository;
-import de.campusplatform.campus_platform_service.enums.EventType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import de.campusplatform.campus_platform_service.enums.ExamStatus;
 
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -50,7 +52,7 @@ public class StudentSubmissionService {
     private final StudentCourseSubmissionRepository submissionRepository;
     private final SubmissionDocumentRepository submissionDocumentRepository;
     private final AppUserRepository appUserRepository;
-    private final de.campusplatform.campus_platform_service.repository.EventRepository eventRepository;
+    private final EventRepository eventRepository;
 
     @Transactional(readOnly = true)
     public List<StudentSubmissionListItemResponse> getMySubmissions(String username) {
@@ -72,12 +74,10 @@ public class StudentSubmissionService {
             return false;
         }
 
-        // The student should only see submissions when the CourseSeries is ACTIVE, GRADING, or COMPLETED
-        if (series.getStatus() == de.campusplatform.campus_platform_service.enums.CourseStatus.PLANNED) {
+        if (series.getStatus() == CourseStatus.PLANNED) {
             return false;
         }
-        
-        // A student is eligible if they are in any of the study groups assigned to the course series
+
         return series.getStudyGroups().stream()
                 .anyMatch(group -> group.getMemberships().stream()
                         .anyMatch(m -> m.getStudent().getAppUser().getId().equals(student.getId())));
@@ -105,26 +105,26 @@ public class StudentSubmissionService {
     @Transactional
     public void cleanupSubmissionsIfNoKlausurExists(Long seriesId) {
         CourseSeries series = submissionRepository.findCourseSeriesWithGroupsById(seriesId).orElse(null);
-        if (series == null) return;
+        if (series == null) {
+            return;
+        }
 
         ExamType examType = series.getSelectedExamType();
         if (examType == null && series.getModule() != null) {
             examType = series.getModule().getPreferredExamType();
         }
 
-        // If it's a SUBMISSION type, we never cleanup based on Klausur events
         if (examType != null && examType.isSubmission()) {
             return;
         }
 
-        // For WRITTEN (or undefined), we still require a Klausur event to keep submissions
         boolean hasKlausur = eventRepository.existsByCourseSeriesIdAndEventType(seriesId, EventType.KLAUSUR);
-        
+
         if (!hasKlausur) {
-            // Remove all submissions for this series that are still PENDING and have no documents
             List<StudentCourseSubmission> subs = submissionRepository.findByCourseSeriesId(seriesId);
             for (StudentCourseSubmission sub : subs) {
-                if (sub.getStatus() == SubmissionStatus.PENDING && (sub.getDocuments() == null || sub.getDocuments().isEmpty())) {
+                if (sub.getStatus() == SubmissionStatus.PENDING
+                        && (sub.getDocuments() == null || sub.getDocuments().isEmpty())) {
                     submissionRepository.delete(sub);
                 }
             }
@@ -277,7 +277,7 @@ public class StudentSubmissionService {
     }
 
     private boolean isOverdue(StudentCourseSubmission submission) {
-        if (submission.getStatus() != SubmissionStatus.PENDING) {
+        if (resolveVisibleSubmissionStatus(submission) != SubmissionStatus.PENDING) {
             return false;
         }
 
@@ -305,6 +305,22 @@ public class StudentSubmissionService {
 
     private Double resolveVisiblePoints(StudentCourseSubmission submission) {
         return isGradeVisible(submission) ? submission.getPoints() : null;
+    }
+
+    private SubmissionStatus resolveVisibleSubmissionStatus(StudentCourseSubmission submission) {
+        SubmissionStatus rawStatus = submission.getStatus();
+
+        if (rawStatus == null) {
+            return SubmissionStatus.PENDING;
+        }
+
+        if (rawStatus == SubmissionStatus.GRADED && !isGradeVisible(submission)) {
+            return submission.getSubmissionDate() != null
+                    ? SubmissionStatus.SUBMITTED
+                    : SubmissionStatus.PENDING;
+        }
+
+        return rawStatus;
     }
 
     private void validateUploadRequest(UploadSubmissionDocumentRequest request) {
@@ -354,7 +370,7 @@ public class StudentSubmissionService {
                 submission.getCourseSeries().getSelectedExamType() != null
                         ? submission.getCourseSeries().getSelectedExamType().getNameDe()
                         : null,
-                submission.getStatus(),
+                resolveVisibleSubmissionStatus(submission),
                 submission.getCourseSeries().getSubmissionStartDate(),
                 submission.getCourseSeries().getSubmissionDeadline(),
                 effectiveDeadline,
@@ -390,7 +406,7 @@ public class StudentSubmissionService {
                 submission.getCourseSeries().getSelectedExamType() != null
                         ? submission.getCourseSeries().getSelectedExamType().getNameDe()
                         : null,
-                submission.getStatus(),
+                resolveVisibleSubmissionStatus(submission),
                 submission.getCourseSeries().getSubmissionStartDate(),
                 submission.getCourseSeries().getSubmissionDeadline(),
                 effectiveDeadline,
