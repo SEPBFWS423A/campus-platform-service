@@ -1,5 +1,6 @@
 package de.campusplatform.campus_platform_service.model;
 
+import de.campusplatform.campus_platform_service.enums.AbsenceType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,7 +17,9 @@ public class LecturerAbsence {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String reason;
+    @Enumerated(EnumType.STRING)
+    private AbsenceType type;
+    private String note;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
 

@@ -37,15 +37,18 @@ public class EventService {
     private final CourseSeriesRepository courseSeriesRepository;
     private final RoomRepository roomRepository;
     private final StudentSubmissionService studentSubmissionService;
+    private final LecturerAbsenceService lecturerAbsenceService;
 
     public EventService(EventRepository eventRepository, 
                         CourseSeriesRepository courseSeriesRepository, 
                         RoomRepository roomRepository,
-                        StudentSubmissionService studentSubmissionService) {
+                        StudentSubmissionService studentSubmissionService,
+                        LecturerAbsenceService lecturerAbsenceService) {
         this.eventRepository = eventRepository;
         this.courseSeriesRepository = courseSeriesRepository;
         this.roomRepository = roomRepository;
         this.studentSubmissionService = studentSubmissionService;
+        this.lecturerAbsenceService = lecturerAbsenceService;
     }
 
     public List<AdminEventResponse> getEventsForSeries(Long seriesId) {
@@ -65,13 +68,15 @@ public class EventService {
     public AdminEventResponse createEvent(Long seriesId, EventRequest request) {
         CourseSeries series = courseSeriesRepository.findById(seriesId)
                 .orElseThrow(() -> new AppException("Course Series not found"));
-        
+
         Event event = new Event();
         event.setCourseSeries(series);
         mapRequestToEntity(request, event);
-        
+
+        validateNoCollision(event, null);
+
         Event saved = eventRepository.save(event);
-        
+
         return mapToAdminResponse(saved);
     }
 
@@ -223,6 +228,11 @@ public class EventService {
         // 2. Lecturer Collision
         if (newEvent.getCourseSeries() != null && newEvent.getCourseSeries().getAssignedLecturer() != null) {
             Long lecturerId = newEvent.getCourseSeries().getAssignedLecturer().getId();
+
+            if (lecturerAbsenceService.hasAbsenceConflict(lecturerId, proposedStart, end)) {
+                return true;
+            }
+
             List<Event> lecturerOverlaps = eventRepository.findOverlappingEventsForLecturer(lecturerId, proposedStart, end, null);
             if (!lecturerOverlaps.isEmpty()) return true;
         }
@@ -469,6 +479,11 @@ public class EventService {
         // 2. Lecturer Collision
         if (event.getCourseSeries() != null && event.getCourseSeries().getAssignedLecturer() != null) {
             Long lecturerId = event.getCourseSeries().getAssignedLecturer().getId();
+
+            if (lecturerAbsenceService.hasAbsenceConflict(lecturerId, event.getStartTime(), end)) {
+                throw new de.campusplatform.campus_platform_service.exception.LecturerAbsenceConflictException("Terminkonflikt: Der Dozent hat in diesem Zeitraum eine Abwesenheit eingetragen.");
+            }
+
             List<Event> lecturerOverlaps = eventRepository.findOverlappingEventsForLecturer(
                     lecturerId,
                     event.getStartTime(),
