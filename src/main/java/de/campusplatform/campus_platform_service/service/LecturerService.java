@@ -134,7 +134,7 @@ public class LecturerService {
                 cs.getModule().getName(),
                 studyGroupNames,
                 cs.getSelectedExamType() != null ? cs.getSelectedExamType().getNameDe() : null,
-                cs.getSelectedExamType() != null ? cs.getSelectedExamType().isSubmission() : false,
+                cs.getSelectedExamType() != null && cs.getSelectedExamType().isSubmission(),
                 resolveEffectiveStatus(cs),
                 examFileName,
                 solutionFileName,
@@ -279,18 +279,15 @@ public class LecturerService {
                                 .status(SubmissionStatus.PENDING)
                                 .build();
                     });
-            
-            Double finalGrade = item.grade();
-            if (item.points() != null) {
-                finalGrade = gradeScaleService.calculateGrade(item.points());
-            }
 
-            submission.setGrade(finalGrade);
-            submission.setPoints(item.points());
-            submission.setFeedback(item.feedback());
-            if (submission.getStatus() == SubmissionStatus.PENDING) {
-                submission.setStatus(SubmissionStatus.GRADED);
-            }
+            applyAssessmentResult(
+                    submission,
+                    item.status(),
+                    item.grade(),
+                    item.points(),
+                    item.feedback()
+            );
+
             submissionRepository.save(submission);
         }
 
@@ -342,18 +339,14 @@ public class LecturerService {
                             .build();
                 });
 
-        Double finalGrade = item.grade();
-        if (item.points() != null) {
-            finalGrade = gradeScaleService.calculateGrade(item.points());
-        }
+        applyAssessmentResult(
+                submission,
+                item.status(),
+                item.grade(),
+                item.points(),
+                item.feedback()
+        );
 
-        submission.setGrade(finalGrade);
-        submission.setPoints(item.points());
-        submission.setFeedback(item.feedback());
-
-        if (submission.getStatus() == SubmissionStatus.PENDING && (finalGrade != null || item.points() != null)) {
-            submission.setStatus(SubmissionStatus.GRADED);
-        }
         StudentCourseSubmission saved = submissionRepository.save(submission);
 
         if (cs.getExamStatus() != ExamStatus.COMPLETED && cs.getExamStatus() != ExamStatus.GRADING) {
@@ -410,12 +403,10 @@ public class LecturerService {
         }
 
         // Get the latest document
-        SubmissionDocument doc = submission.getDocuments().stream()
-                .sorted(java.util.Comparator.comparing(
+        SubmissionDocument doc = submission.getDocuments().stream().max(java.util.Comparator.comparing(
                         SubmissionDocument::getUploadedAt,
                         java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())
-                ).reversed())
-                .findFirst()
+                ))
                 .orElseThrow(() -> new AppException("Document not found"));
 
         return new SubmissionDocumentDownloadData(
@@ -424,5 +415,52 @@ public class LecturerService {
                 doc.getFileSize() != null ? doc.getFileSize() : 0L,
                 java.util.Base64.getDecoder().decode(doc.getContentBase64())
         );
+    }
+
+    private void applyAssessmentResult(StudentCourseSubmission submission,
+                                       SubmissionStatus requestedStatus,
+                                       Double requestedGrade,
+                                       Double requestedPoints,
+                                       String feedback) {
+
+        SubmissionStatus currentStatus = submission.getStatus() != null
+                ? submission.getStatus()
+                : SubmissionStatus.PENDING;
+
+        if (requestedStatus == SubmissionStatus.EXCUSED_ABSENCE
+                || requestedStatus == SubmissionStatus.UNEXCUSED_ABSENCE
+                || requestedStatus == SubmissionStatus.EXCLUDED) {
+            submission.setStatus(requestedStatus);
+            submission.setGrade(null);
+            submission.setPoints(null);
+            submission.setFeedback(feedback);
+            return;
+        }
+
+        Double finalGrade = requestedGrade;
+        if (requestedPoints != null) {
+            finalGrade = gradeScaleService.calculateGrade(requestedPoints);
+        }
+
+        submission.setGrade(finalGrade);
+        submission.setPoints(requestedPoints);
+        submission.setFeedback(feedback);
+
+        if (finalGrade != null || requestedPoints != null) {
+            submission.setStatus(SubmissionStatus.GRADED);
+            return;
+        }
+
+        if (requestedStatus == SubmissionStatus.SUBMITTED) {
+            submission.setStatus(SubmissionStatus.SUBMITTED);
+            return;
+        }
+
+        if (requestedStatus == SubmissionStatus.PENDING) {
+            submission.setStatus(SubmissionStatus.PENDING);
+            return;
+        }
+
+        submission.setStatus(currentStatus);
     }
 }

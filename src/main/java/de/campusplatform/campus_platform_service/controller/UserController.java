@@ -5,10 +5,9 @@ import de.campusplatform.campus_platform_service.model.InstitutionInfo;
 import de.campusplatform.campus_platform_service.model.Room;
 import de.campusplatform.campus_platform_service.repository.InstitutionRepository;
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
-import de.campusplatform.campus_platform_service.service.AuthService;
-import de.campusplatform.campus_platform_service.service.FaqService;
-import de.campusplatform.campus_platform_service.service.StudentDashboardService;
-import de.campusplatform.campus_platform_service.service.StudentSubmissionService;
+import de.campusplatform.campus_platform_service.security.CustomUserDetails;
+import de.campusplatform.campus_platform_service.service.*;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,13 +20,16 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/users")
 @PreAuthorize("isAuthenticated()")
+@RequiredArgsConstructor
 public class UserController {
 
     private final AuthService authService;
     private final RoomRepository roomRepository;
     private final InstitutionRepository institutionRepository;
-    private final FaqService faqService;
     private final StudentSubmissionService studentSubmissionService;
+    private final StudentGradeService studentGradeService;
+
+
     private final StudentDashboardService studentDashboardService;
 
 
@@ -97,12 +99,6 @@ public class UserController {
         return ResponseEntity.ok(
             studentDashboardService.getDashboard(userDetails.getUsername())
         );
-    }
-
-    // FAQ
-    @GetMapping("/faqs")
-    public List<FaqResponse> getVisibleFaqs(@RequestParam(defaultValue = "de") String lang) {
-        return faqService.getVisibleFaqs(lang);
     }
 
     // STUDENT SUBMISSIONS
@@ -189,5 +185,16 @@ public class UserController {
     ) {
         studentSubmissionService.submitSubmission(submissionId, userDetails.getUsername());
         return ResponseEntity.ok().build();
+    }
+
+    // Notenübersicht
+
+    @GetMapping("/grades/overview")
+    public ResponseEntity<StudentGradeOverviewResponse> getOverview(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                studentGradeService.getOverviewForStudent(userDetails.appUser().getId())
+        );
     }
 }

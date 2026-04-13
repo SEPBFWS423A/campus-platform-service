@@ -18,6 +18,7 @@ import de.campusplatform.campus_platform_service.repository.SpecializationReposi
 import de.campusplatform.campus_platform_service.model.CourseOfStudy;
 import de.campusplatform.campus_platform_service.model.Specialization;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,6 +31,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin")
 @PreAuthorize("hasAuthority('ADMIN')")
+@RequiredArgsConstructor
 public class AdminController {
 
     private final AuthService authService;
@@ -44,30 +46,6 @@ public class AdminController {
     private final CourseSeriesService courseSeriesService;
     private final EventService eventService;
 
-
-    public AdminController(AuthService authService,
-                           RoomRepository roomRepository,
-                           StudyGroupService studyGroupService,
-                           ModuleService moduleService,
-                           CourseOfStudyRepository courseOfStudyRepository,
-                           SpecializationRepository specializationRepository,
-                           InstitutionRepository institutionRepository,
-                           ExamTypeRepository examTypeRepository,
-                           FaqService faqService,
-                           CourseSeriesService courseSeriesService,
-                           EventService eventService) {
-        this.authService = authService;
-        this.roomRepository = roomRepository;
-        this.studyGroupService = studyGroupService;
-        this.moduleService = moduleService;
-        this.courseOfStudyRepository = courseOfStudyRepository;
-        this.specializationRepository = specializationRepository;
-        this.institutionRepository = institutionRepository;
-        this.examTypeRepository = examTypeRepository;
-        this.faqService = faqService;    
-        this.courseSeriesService = courseSeriesService;
-        this.eventService = eventService;
-    }
 
     @PostMapping("/invitations")
     public ResponseEntity<Void> inviteUser(@RequestBody InvitationRequest request) {

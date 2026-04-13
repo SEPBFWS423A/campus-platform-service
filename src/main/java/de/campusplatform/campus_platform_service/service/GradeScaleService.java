@@ -30,14 +30,14 @@ public class GradeScaleService {
 
     public Double calculateGrade(Double points) {
         if (points == null) return null;
-        
+
         List<GradeScaleEntry> entries = getAllEntries();
         for (GradeScaleEntry entry : entries) {
             if (points >= entry.getMinimumPoints()) {
                 return entry.getGrade();
             }
         }
-        
+
         // If no entry found (below lowest threshold), it's usually 5.0
         return 5.0;
     }

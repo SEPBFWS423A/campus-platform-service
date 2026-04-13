@@ -1,9 +1,9 @@
 package de.campusplatform.campus_platform_service.enums;
 
-public enum SubmissionStatus {
+public enum StudentGradeStatus {
     PENDING,
-    SUBMITTED,
-    GRADED,
+    PASSED,
+    FAILED,
     EXCUSED_ABSENCE,
     UNEXCUSED_ABSENCE,
     EXCLUDED
