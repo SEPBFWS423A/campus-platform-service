@@ -16,12 +16,12 @@ import de.campusplatform.campus_platform_service.repository.AppUserRepository;
 import de.campusplatform.campus_platform_service.repository.StudentCourseSubmissionRepository;
 import de.campusplatform.campus_platform_service.repository.SubmissionDocumentRepository;
 import de.campusplatform.campus_platform_service.enums.EventType;
-import de.campusplatform.campus_platform_service.enums.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import de.campusplatform.campus_platform_service.enums.ExamStatus;
 
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -294,6 +294,19 @@ public class StudentSubmissionService {
         return !submission.isLateSubmissionAllowed();
     }
 
+    private boolean isGradeVisible(StudentCourseSubmission submission) {
+        return submission.getCourseSeries() != null
+                && submission.getCourseSeries().getExamStatus() == ExamStatus.COMPLETED;
+    }
+
+    private Double resolveVisibleGrade(StudentCourseSubmission submission) {
+        return isGradeVisible(submission) ? submission.getGrade() : null;
+    }
+
+    private Double resolveVisiblePoints(StudentCourseSubmission submission) {
+        return isGradeVisible(submission) ? submission.getPoints() : null;
+    }
+
     private void validateUploadRequest(UploadSubmissionDocumentRequest request) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request fehlt.");
@@ -351,8 +364,8 @@ public class StudentSubmissionService {
                 !hasDocuments,
                 isEditable(submission),
                 isOverdue(submission),
-                submission.getGrade(),
-                submission.getPoints()
+                resolveVisibleGrade(submission),
+                resolveVisiblePoints(submission)
         );
     }
 
@@ -388,9 +401,9 @@ public class StudentSubmissionService {
                 !hasDocuments,
                 isEditable(submission),
                 isEditable(submission) && hasDocuments,
-                submission.getGrade(),
-                submission.getPoints(),
-                submission.getFeedback(),
+                resolveVisibleGrade(submission),
+                resolveVisiblePoints(submission),
+                isGradeVisible(submission) ? submission.getFeedback() : null,
                 documents
         );
     }
