@@ -8,6 +8,7 @@ import de.campusplatform.campus_platform_service.dto.StudentGradeSemesterGroupRe
 import de.campusplatform.campus_platform_service.dto.StudentGradeSummaryResponse;
 import de.campusplatform.campus_platform_service.enums.AcademicTermSeason;
 import de.campusplatform.campus_platform_service.enums.EventType;
+import de.campusplatform.campus_platform_service.enums.ExamStatus;
 import de.campusplatform.campus_platform_service.enums.StudentGradeStatus;
 import de.campusplatform.campus_platform_service.enums.SubmissionStatus;
 import de.campusplatform.campus_platform_service.exception.AppException;
@@ -106,7 +107,6 @@ public class StudentGradeService {
                 ))
                 .toList();
 
-        // 1) Anzeige: ALLE zugeordneten Kurse / Module anzeigen
         List<StudentGradeOverviewItemResponse> displayItems = rawItems.stream()
                 .sorted(Comparator
                         .comparing(StudentGradeOverviewItemResponse::getModuleSemester, Comparator.nullsLast(Integer::compareTo))
@@ -115,7 +115,6 @@ public class StudentGradeService {
                         .thenComparing(StudentGradeOverviewItemResponse::getCourseSeriesId, Comparator.nullsLast(Long::compareTo)))
                 .toList();
 
-        // 2) Summary: pro Modul nur den neuesten Versuch berücksichtigen
         List<StudentGradeOverviewItemResponse> summaryItems = rawItems.stream()
                 .collect(Collectors.toMap(
                         StudentGradeOverviewItemResponse::getModuleId,
@@ -175,7 +174,7 @@ public class StudentGradeService {
                 .examDate(examDate)
                 .academicTerm(deriveAcademicTerm(termReferenceDate))
                 .ects(courseModule.getEcts())
-                .status(determineStatus(submission))
+                .status(determineStatus(courseSeries, submission))
                 .attemptNumber(submission != null && submission.getAttemptNumber() != null ? submission.getAttemptNumber() : 1)
                 .grade(isGradeVisibleForStudent(courseSeries, submission) ? Objects.requireNonNull(submission).getGrade() : null)
                 .reviewerComment(extractVisibleFeedback(courseSeries, submission))
@@ -198,7 +197,7 @@ public class StudentGradeService {
                 .build();
     }
 
-    private StudentGradeStatus determineStatus(StudentCourseSubmission submission) {
+    private StudentGradeStatus determineStatus(CourseSeries courseSeries, StudentCourseSubmission submission) {
         if (submission == null) {
             return StudentGradeStatus.PENDING;
         }
@@ -217,7 +216,7 @@ public class StudentGradeService {
             return StudentGradeStatus.EXCLUDED;
         }
 
-        if (submission.getGrade() == null) {
+        if (!isGradeVisibleForStudent(courseSeries, submission)) {
             return StudentGradeStatus.PENDING;
         }
 
@@ -504,16 +503,15 @@ public class StudentGradeService {
                 .build();
     }
 
-    //Note erst nach Examstatus = completed
     private boolean isGradeVisibleForStudent(CourseSeries courseSeries, StudentCourseSubmission submission) {
-        return courseSeries.getExamStatus() == de.campusplatform.campus_platform_service.enums.ExamStatus.COMPLETED
+        return courseSeries != null
+                && courseSeries.getExamStatus() == ExamStatus.COMPLETED
                 && submission != null
                 && submission.getGrade() != null;
     }
 
-    //Feedback auch erst nach Examstatus = completed
     private String extractVisibleFeedback(CourseSeries courseSeries, StudentCourseSubmission submission) {
-        if (courseSeries.getExamStatus() != de.campusplatform.campus_platform_service.enums.ExamStatus.COMPLETED) {
+        if (courseSeries == null || courseSeries.getExamStatus() != ExamStatus.COMPLETED) {
             return null;
         }
 
