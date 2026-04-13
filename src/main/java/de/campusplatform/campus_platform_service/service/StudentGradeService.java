@@ -177,8 +177,8 @@ public class StudentGradeService {
                 .ects(courseModule.getEcts())
                 .status(determineStatus(submission))
                 .attemptNumber(submission != null && submission.getAttemptNumber() != null ? submission.getAttemptNumber() : 1)
-                .grade(isRegularGradedSubmission(submission) ? submission.getGrade() : null)
-                .reviewerComment(extractVisibleFeedback(submission))
+                .grade(isGradeVisibleForStudent(courseSeries, submission) ? Objects.requireNonNull(submission).getGrade() : null)
+                .reviewerComment(extractVisibleFeedback(courseSeries, submission))
                 .lastUpdatedAt(submission != null ? submission.getUpdatedAt() : null)
                 .build();
     }
@@ -224,25 +224,6 @@ public class StudentGradeService {
         return submission.getGrade() <= 4.0
                 ? StudentGradeStatus.PASSED
                 : StudentGradeStatus.FAILED;
-    }
-
-    private boolean isRegularGradedSubmission(StudentCourseSubmission submission) {
-        if (submission == null) {
-            return false;
-        }
-
-        SubmissionStatus status = submission.getStatus();
-        return status != SubmissionStatus.EXCUSED_ABSENCE
-                && status != SubmissionStatus.UNEXCUSED_ABSENCE
-                && status != SubmissionStatus.EXCLUDED
-                && submission.getGrade() != null;
-    }
-
-    private String extractVisibleFeedback(StudentCourseSubmission submission) {
-        if (submission == null || submission.getFeedback() == null || submission.getFeedback().isBlank()) {
-            return null;
-        }
-        return submission.getFeedback();
     }
 
     private LocalDate resolveExamDate(CourseSeries courseSeries) {
@@ -521,5 +502,25 @@ public class StudentGradeService {
                         .build())
                 .semesters(List.of())
                 .build();
+    }
+
+    //Note erst nach Examstatus = completed
+    private boolean isGradeVisibleForStudent(CourseSeries courseSeries, StudentCourseSubmission submission) {
+        return courseSeries.getExamStatus() == de.campusplatform.campus_platform_service.enums.ExamStatus.COMPLETED
+                && submission != null
+                && submission.getGrade() != null;
+    }
+
+    //Feedback auch erst nach Examstatus = completed
+    private String extractVisibleFeedback(CourseSeries courseSeries, StudentCourseSubmission submission) {
+        if (courseSeries.getExamStatus() != de.campusplatform.campus_platform_service.enums.ExamStatus.COMPLETED) {
+            return null;
+        }
+
+        if (submission == null || submission.getFeedback() == null || submission.getFeedback().isBlank()) {
+            return null;
+        }
+
+        return submission.getFeedback();
     }
 }
