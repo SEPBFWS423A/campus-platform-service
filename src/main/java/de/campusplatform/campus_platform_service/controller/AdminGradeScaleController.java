@@ -4,21 +4,18 @@ import de.campusplatform.campus_platform_service.model.GradeScaleEntry;
 import de.campusplatform.campus_platform_service.service.GradeScaleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/grade-scale")
+@PreAuthorize("hasAuthority('ADMIN')")
 @RequiredArgsConstructor
 public class AdminGradeScaleController {
 
     private final GradeScaleService gradeScaleService;
-
-    @GetMapping
-    public List<GradeScaleEntry> getGradeScale() {
-        return gradeScaleService.getAllEntries();
-    }
 
     @PostMapping
     public GradeScaleEntry saveEntry(@RequestBody GradeScaleEntry entry) {

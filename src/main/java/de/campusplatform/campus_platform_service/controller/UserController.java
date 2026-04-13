@@ -3,6 +3,7 @@ package de.campusplatform.campus_platform_service.controller;
 import de.campusplatform.campus_platform_service.dto.*;
 import de.campusplatform.campus_platform_service.model.InstitutionInfo;
 import de.campusplatform.campus_platform_service.model.Room;
+import de.campusplatform.campus_platform_service.model.GradeScaleEntry;
 import de.campusplatform.campus_platform_service.repository.InstitutionRepository;
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
 import de.campusplatform.campus_platform_service.security.CustomUserDetails;
@@ -28,24 +29,8 @@ public class UserController {
     private final InstitutionRepository institutionRepository;
     private final StudentSubmissionService studentSubmissionService;
     private final StudentGradeService studentGradeService;
-
-
     private final StudentDashboardService studentDashboardService;
-
-
-    public UserController(AuthService authService,
-                          RoomRepository roomRepository,
-                          InstitutionRepository institutionRepository,
-                          FaqService faqService,
-                          StudentSubmissionService studentSubmissionService,
-                          StudentDashboardService studentDashboardService) {
-        this.authService = authService;
-        this.roomRepository = roomRepository;
-        this.institutionRepository = institutionRepository;
-        this.faqService = faqService;
-        this.studentSubmissionService = studentSubmissionService;
-        this.studentDashboardService = studentDashboardService;
-    }
+    private final GradeScaleService gradeScaleService;
 
     @GetMapping("/institution")
     public ResponseEntity<InstitutionInfo> getInstitutionInfo() {
@@ -196,5 +181,10 @@ public class UserController {
         return ResponseEntity.ok(
                 studentGradeService.getOverviewForStudent(userDetails.appUser().getId())
         );
+    }
+
+    @GetMapping("/grade-scale")
+    public ResponseEntity<List<GradeScaleEntry>> getGradeScale() {
+        return ResponseEntity.ok(gradeScaleService.getAllEntries());
     }
 }
