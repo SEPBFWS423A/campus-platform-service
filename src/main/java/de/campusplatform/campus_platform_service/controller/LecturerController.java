@@ -12,7 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/lecturer")
-@PreAuthorize("hasAuthority('LECTURER')")
+@PreAuthorize("hasAnyAuthority('LECTURER', 'ADMIN')")
 public class LecturerController {
 
     private final LecturerService lecturerService;
@@ -24,6 +24,16 @@ public class LecturerController {
     @GetMapping("/courses")
     public ResponseEntity<List<LecturerCourseResponse>> getCourses(@AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(lecturerService.getCoursesForLecturer(userDetails.appUser().getId()));
+    }
+    
+    @GetMapping("/timetable/events")
+    public ResponseEntity<List<LecturerEventResponse>> getTimetableEvents(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(lecturerService.getTimetableEvents(userDetails.appUser().getId()));
+    }
+
+    @GetMapping("/timetable/active-series")
+    public ResponseEntity<List<LecturerActiveCourseResponse>> getActiveCourseSeries(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(lecturerService.getActiveCourseSeries(userDetails.appUser().getId()));
     }
 
     @PostMapping("/course-series/{id}/exam-materials")

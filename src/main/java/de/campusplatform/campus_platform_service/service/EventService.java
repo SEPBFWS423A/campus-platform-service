@@ -3,6 +3,8 @@ package de.campusplatform.campus_platform_service.service;
 import de.campusplatform.campus_platform_service.dto.AdminEventResponse;
 import de.campusplatform.campus_platform_service.dto.AutoScheduleRequest;
 import de.campusplatform.campus_platform_service.dto.EventRequest;
+import de.campusplatform.campus_platform_service.dto.RoomScheduleEventResponse;
+import de.campusplatform.campus_platform_service.dto.RoomUtilizationResponse;
 import de.campusplatform.campus_platform_service.enums.EventType;
 import de.campusplatform.campus_platform_service.exception.AppException;
 import de.campusplatform.campus_platform_service.model.CourseSeries;
@@ -11,7 +13,6 @@ import de.campusplatform.campus_platform_service.model.Room;
 import de.campusplatform.campus_platform_service.repository.CourseSeriesRepository;
 import de.campusplatform.campus_platform_service.repository.EventRepository;
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
-import de.campusplatform.campus_platform_service.enums.EventType;
 import de.campusplatform.campus_platform_service.model.ExamType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -515,5 +517,67 @@ public class EventService {
                 entity.getStartTime(),
                 entity.getDurationMinutes()
         );
+    }
+
+    public List<RoomScheduleEventResponse> getRoomSchedule(LocalDateTime start, LocalDateTime end) {
+        List<Event> events = eventRepository.findAllEventsInRange(start, end);
+        List<RoomScheduleEventResponse> result = new ArrayList<>();
+        for (Event event : events) {
+            for (Room room : event.getRooms()) {
+                result.add(new RoomScheduleEventResponse(
+                    event.getId(),
+                    event.getName(),
+                    event.getEventType().name(),
+                    room.getId(),
+                    room.getName(),
+                    event.getStartTime() != null ? event.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
+                    event.getDurationMinutes(),
+                    event.getCourseSeries() != null ? event.getCourseSeries().getId() : null,
+                    event.getCourseSeries() != null && event.getCourseSeries().getModule() != null
+                        ? event.getCourseSeries().getModule().getName() : null
+                ));
+            }
+        }
+        return result;
+    }
+
+    public List<RoomUtilizationResponse> getRoomUtilizations(LocalDate startDate, LocalDate endDate) {
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.plusDays(1).atStartOfDay();
+
+        // Werktage zählen
+        long workingDays = startDate.datesUntil(endDate.plusDays(1))
+            .filter(d -> d.getDayOfWeek() != DayOfWeek.SATURDAY
+                      && d.getDayOfWeek() != DayOfWeek.SUNDAY)
+            .count();
+        int totalAvailableMinutes = (int) workingDays * 600;
+
+        List<Event> events = eventRepository.findAllEventsInRange(start, end);
+        List<Room> allRooms = roomRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+
+        return allRooms.stream().map(room -> {
+            List<Event> roomEvents = events.stream()
+                .filter(e -> e.getRooms().stream().anyMatch(r -> r.getId().equals(room.getId())))
+                .collect(Collectors.toList());
+
+            int bookedMinutes = roomEvents.stream()
+                .mapToInt(Event::getDurationMinutes).sum();
+
+            long plannedCount = roomEvents.stream()
+                .filter(e -> e.getStartTime() != null && e.getStartTime().isAfter(now)).count();
+            long pastCount = roomEvents.stream()
+                .filter(e -> e.getStartTime() != null && !e.getStartTime().isAfter(now)).count();
+
+            double utilization = totalAvailableMinutes > 0
+                ? Math.min(100.0, (double) bookedMinutes / totalAvailableMinutes * 100)
+                : 0.0;
+
+            return new RoomUtilizationResponse(
+                room.getId(), room.getName(), room.getSeats(), room.getExamSeats(),
+                Math.round(utilization * 10.0) / 10.0,
+                bookedMinutes, totalAvailableMinutes, plannedCount, pastCount
+            );
+        }).collect(Collectors.toList());
     }
 }

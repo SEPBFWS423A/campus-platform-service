@@ -30,6 +30,23 @@ public class UserController {
     private final StudentGradeService studentGradeService;
 
 
+    private final StudentDashboardService studentDashboardService;
+
+
+    public UserController(AuthService authService,
+                          RoomRepository roomRepository,
+                          InstitutionRepository institutionRepository,
+                          FaqService faqService,
+                          StudentSubmissionService studentSubmissionService,
+                          StudentDashboardService studentDashboardService) {
+        this.authService = authService;
+        this.roomRepository = roomRepository;
+        this.institutionRepository = institutionRepository;
+        this.faqService = faqService;
+        this.studentSubmissionService = studentSubmissionService;
+        this.studentDashboardService = studentDashboardService;
+    }
+
     @GetMapping("/institution")
     public ResponseEntity<InstitutionInfo> getInstitutionInfo() {
         return institutionRepository.getFirst()
@@ -76,6 +93,13 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/dashboard")
+    public ResponseEntity<StudentDashboardResponse> getStudentDashboard(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(
+            studentDashboardService.getDashboard(userDetails.getUsername())
+        );
+    }
 
     // STUDENT SUBMISSIONS
 

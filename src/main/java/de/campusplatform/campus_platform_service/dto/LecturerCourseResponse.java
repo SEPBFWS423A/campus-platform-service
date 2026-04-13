@@ -10,7 +10,7 @@ public record LecturerCourseResponse(
         String moduleName,
         List<String> studyGroupNames,
         String examTypeName,
-        boolean isSubmission,
+        boolean submission,
         ExamStatus examStatus,
         String examFileName,
         String solutionFileName,
