@@ -19,9 +19,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(LecturerAbsenceConflictException.class)
-    public ResponseEntity<ErrorResponse> handleLecturerAbsenceConflict(LecturerAbsenceConflictException ex, WebRequest request) {
-        ErrorResponse errorResponse = new ErrorResponse(ex.getMessage());
-        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    public ResponseEntity<de.campusplatform.campus_platform_service.dto.ConflictResponse> handleLecturerAbsenceConflict(LecturerAbsenceConflictException ex, WebRequest request) {
+        var body = new de.campusplatform.campus_platform_service.dto.ConflictResponse(ex.getMessage(), ex.getConflictingEvents());
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(BadCredentialsException.class)
