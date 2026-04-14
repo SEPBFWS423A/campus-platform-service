@@ -123,6 +123,13 @@ public class AdminController {
             room.setName(updated.getName());
             room.setSeats(updated.getSeats());
             room.setExamSeats(updated.getExamSeats());
+            room.setBuilding(updated.getBuilding());
+            room.setFloor(updated.getFloor());
+            room.setRoomType(updated.getRoomType());
+            room.setOperationalStatus(updated.getOperationalStatus());
+            room.setFeatures(updated.getFeatures());
+            room.setBarrierefreiheit(updated.getBarrierefreiheit());
+            room.setDescription(updated.getDescription());
             return ResponseEntity.ok(roomRepository.save(room));
         }).orElse(ResponseEntity.notFound().build());
     }
@@ -134,6 +141,13 @@ public class AdminController {
         }
         roomRepository.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/rooms/{id}/status")
+    public ResponseEntity<Room> updateRoomStatus(@PathVariable Long id, @RequestBody StatusRequest request) {
+        Room room = roomRepository.findById(id).orElseThrow();
+        room.setOperationalStatus(de.campusplatform.campus_platform_service.model.OperationalStatus.valueOf(request.status()));
+        return ResponseEntity.ok(roomRepository.save(room));
     }
 
     // Study Groups

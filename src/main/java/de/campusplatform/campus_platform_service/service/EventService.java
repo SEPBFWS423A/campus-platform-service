@@ -321,7 +321,9 @@ public class EventService {
                         // b) Room finding
                         Room selectedRoom = null;
                         for (Room room : availableCandidateRooms) {
-                            if (hasCapacity(room, requiredSeats, EventType.LEHRVERANSTALTUNG) && 
+                            if ((room.getOperationalStatus() == de.campusplatform.campus_platform_service.model.OperationalStatus.AKTIV || 
+                                 room.getOperationalStatus() == de.campusplatform.campus_platform_service.model.OperationalStatus.EINGESCHRAENKT) &&
+                                hasCapacity(room, requiredSeats, EventType.LEHRVERANSTALTUNG) && 
                                 isRoomAvailable(room, proposedStart, slot.duration, null)) {
                                 selectedRoom = room;
                                 break;
@@ -366,7 +368,9 @@ public class EventService {
                     if (!hasCollision(tempEvent, proposedStart)) {
                         Room selectedRoom = null;
                         for (Room room : availableCandidateRooms) {
-                            if (hasCapacity(room, requiredSeats, EventType.LEHRVERANSTALTUNG) && 
+                            if ((room.getOperationalStatus() == de.campusplatform.campus_platform_service.model.OperationalStatus.AKTIV || 
+                                 room.getOperationalStatus() == de.campusplatform.campus_platform_service.model.OperationalStatus.EINGESCHRAENKT) &&
+                                hasCapacity(room, requiredSeats, EventType.LEHRVERANSTALTUNG) && 
                                 isRoomAvailable(room, proposedStart, slot.duration, null)) {
                                 selectedRoom = room;
                                 break;
@@ -452,6 +456,8 @@ public class EventService {
         final EventType finalEventType = eventType;
 
         return allRooms.stream()
+                .filter(room -> room.getOperationalStatus() == de.campusplatform.campus_platform_service.model.OperationalStatus.AKTIV
+                             || room.getOperationalStatus() == de.campusplatform.campus_platform_service.model.OperationalStatus.EINGESCHRAENKT)
                 .filter(room -> !occupiedRoomIds.contains(room.getId()))
                 .filter(room -> finalRequiredSeats <= 0 || hasCapacity(room, finalRequiredSeats, finalEventType))
                 .collect(Collectors.toList());
