@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -53,6 +54,7 @@ public class DataInitializer implements CommandLineRunner {
     private final SubmissionDocumentRepository submissionDocumentRepository;
     private final StudentSubmissionService studentSubmissionService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final JobPostingRepository jobPostingRepository;
 
     @Override
     @Transactional
@@ -274,6 +276,7 @@ public class DataInitializer implements CommandLineRunner {
             }
 
             createFaqs();
+            createDemoJobPostings();
 
             if (courseSeriesRepository.count() == 0) {
                 List<StudyGroup> allGroups = studyGroupRepository.findAll();
@@ -712,5 +715,38 @@ public class DataInitializer implements CommandLineRunner {
                 .category("User Account")
                 .build());
         faqRepository.save(faq5);
+    }
+
+    private void createDemoJobPostings() {
+        if (jobPostingRepository.count() > 0) return;
+
+        jobPostingRepository.save(JobPosting.builder()
+                .title("Dozent für Wirtschaftsinformatik (m/w/d)")
+                .department("Informatik")
+                .type(de.campusplatform.campus_platform_service.enums.JobType.LEHRAUFTRAG)
+                .status(de.campusplatform.campus_platform_service.enums.JobStatus.AKTIV)
+                .description("Wir suchen einen erfahrenen Dozenten zur Verstärkung unseres Lehrteams " +
+                        "im Bereich Wirtschaftsinformatik. Schwerpunkte: Datenbanken, ERP-Systeme, " +
+                        "und agile Softwareentwicklung.")
+                .requirements("Abgeschlossenes Studium der Informatik oder Wirtschaftsinformatik (Master oder Promotion), " +
+                        "Lehrerfahrung im Hochschulbereich von Vorteil, Praxiserfahrung in der IT-Branche erwünscht.")
+                .deadline(LocalDate.of(2026, 5, 31))
+                .autoPublish(true)
+                .createdBy("admin@campusplatform.de")
+                .build());
+
+        jobPostingRepository.save(JobPosting.builder()
+                .title("Studentische Hilfskraft Bibliothek (m/w/d)")
+                .department("Bibliothek & Informationsdienste")
+                .type(de.campusplatform.campus_platform_service.enums.JobType.STUDENTISCHE_HILFSKRAFT)
+                .status(de.campusplatform.campus_platform_service.enums.JobStatus.AKTIV)
+                .description("Unterstützung des Bibliothekspersonals bei der Katalogisierung, " +
+                        "Benutzerbetreuung sowie dem Aufbau digitaler Ressourcen.")
+                .requirements("Immatrikuliert an der Hochschule, sorgfältige und selbstständige Arbeitsweise, " +
+                        "gute Deutschkenntnisse in Wort und Schrift.")
+                .deadline(LocalDate.of(2026, 5, 15))
+                .autoPublish(true)
+                .createdBy("admin@campusplatform.de")
+                .build());
     }
 }
