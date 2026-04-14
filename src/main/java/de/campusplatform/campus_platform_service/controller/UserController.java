@@ -31,6 +31,7 @@ public class UserController {
     private final StudentGradeService studentGradeService;
     private final StudentDashboardService studentDashboardService;
     private final GradeScaleService gradeScaleService;
+    private final NotificationService notificationService;
 
     @GetMapping("/institution")
     public ResponseEntity<InstitutionInfo> getInstitutionInfo() {
@@ -86,7 +87,27 @@ public class UserController {
         );
     }
 
-    // STUDENT SUBMISSIONS
+    @GetMapping("/notifications")
+    public ResponseEntity<List<NotificationDto>> getNotifications(
+                    @AuthenticationPrincipal UserDetails userDetails
+    ) {
+            return ResponseEntity.ok(notificationService.getNotificationsForUser(userDetails.getUsername()));
+    }
+
+    @GetMapping("/notifications/unread-count")
+    public ResponseEntity<Long> getUnreadNotificationCount(
+                    @AuthenticationPrincipal UserDetails userDetails
+    ) {
+            return ResponseEntity.ok(notificationService.getUnreadCountForUser(userDetails.getUsername()));
+    }
+
+    @PostMapping("/notifications/mark-all-read")
+    public ResponseEntity<Void> markNotificationsAsRead(
+                    @AuthenticationPrincipal UserDetails userDetails
+    ) {
+            notificationService.markAllAsRead(userDetails.getUsername());
+            return ResponseEntity.ok().build();
+    }
 
     @GetMapping("/submissions")
     public ResponseEntity<List<StudentSubmissionListItemResponse>> getMySubmissions(
