@@ -487,7 +487,9 @@ public class EventService {
             Long lecturerId = event.getCourseSeries().getAssignedLecturer().getId();
 
             if (lecturerAbsenceService.hasAbsenceConflict(lecturerId, event.getStartTime(), end)) {
-                throw new de.campusplatform.campus_platform_service.exception.LecturerAbsenceConflictException("Terminkonflikt: Der Dozent hat in diesem Zeitraum eine Abwesenheit eingetragen.");
+                throw new de.campusplatform.campus_platform_service.exception.LecturerAbsenceConflictException(
+                        "Terminkonflikt: Der Dozent hat in diesem Zeitraum eine Abwesenheit eingetragen.",
+                        java.util.List.of());
             }
 
             List<Event> lecturerOverlaps = eventRepository.findOverlappingEventsForLecturer(

@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -81,9 +82,25 @@ public class LecturerController {
         return ResponseEntity.ok(lecturerAbsenceService.getMyAbsences(userDetails.appUser().getId()));
     }
 
+    @GetMapping("/absences/conflicts")
+    public ResponseEntity<List<ConflictingEventDto>> checkConflicts(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam String start,
+            @RequestParam String end) {
+        Long lecturerId = userDetails.appUser().getId();
+        List<ConflictingEventDto> conflicts = lecturerAbsenceService.getConflictingEvents(
+                lecturerId,
+                LocalDateTime.parse(start),
+                LocalDateTime.parse(end));
+        return ResponseEntity.ok(conflicts);
+    }
+
     @PostMapping("/absences")
-    public ResponseEntity<LecturerAbsenceResponse> createAbsence(@AuthenticationPrincipal CustomUserDetails userDetails, @RequestBody LecturerAbsenceRequest request) {
-        return ResponseEntity.ok(lecturerAbsenceService.createAbsence(userDetails.appUser().getId(), request));
+    public ResponseEntity<LecturerAbsenceResponse> createAbsence(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody LecturerAbsenceRequest request,
+            @RequestParam(defaultValue = "false") boolean force) {
+        return ResponseEntity.ok(lecturerAbsenceService.createAbsence(userDetails.appUser().getId(), request, force));
     }
 
     @DeleteMapping("/absences/{id}")

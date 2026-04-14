@@ -30,7 +30,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                    @Param("end") LocalDateTime end,
                                    @Param("excludeId") Long excludeId);
   
-       @Query("SELECT e FROM Event e JOIN e.courseSeries cs WHERE cs.assignedLecturer.id = :lecturerId " +
+       @Query("SELECT e FROM Event e JOIN FETCH e.courseSeries cs LEFT JOIN FETCH cs.module " +
+                   "WHERE cs.assignedLecturer.id = :lecturerId " +
                    "AND e.startTime < :end " +
                    "AND FUNCTION('DATEADD', MINUTE, e.durationMinutes, e.startTime) > :start " +
                    "AND (:excludeId IS NULL OR e.id != :excludeId)")
