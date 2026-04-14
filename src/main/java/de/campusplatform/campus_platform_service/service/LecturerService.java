@@ -23,17 +23,22 @@ public class LecturerService {
     private final ExamDocumentRepository documentRepository;
     private final GradeScaleService gradeScaleService;
     private final EventRepository eventRepository;
+        private final NotificationService notificationService;
 
     public LecturerService(CourseSeriesRepository courseSeriesRepository,
-                           StudentCourseSubmissionRepository submissionRepository,
-                           AppUserRepository userRepository,
-                           ExamDocumentRepository documentRepository, GradeScaleService gradeScaleService, EventRepository eventRepository) {
+            StudentCourseSubmissionRepository submissionRepository,
+            AppUserRepository userRepository,
+            ExamDocumentRepository documentRepository,
+            GradeScaleService gradeScaleService,
+            EventRepository eventRepository,
+            NotificationService notificationService) {
         this.courseSeriesRepository = courseSeriesRepository;
         this.submissionRepository = submissionRepository;
         this.userRepository = userRepository;
         this.documentRepository = documentRepository;
         this.gradeScaleService = gradeScaleService;
         this.eventRepository = eventRepository;
+                this.notificationService = notificationService;
     }
 
     public List<LecturerEventResponse> getTimetableEvents(Long lecturerId) {
@@ -280,6 +285,8 @@ public class LecturerService {
                                 .build();
                     });
 
+            Double previousGrade = submission.getGrade();
+
             applyAssessmentResult(
                     submission,
                     item.status(),
@@ -288,7 +295,10 @@ public class LecturerService {
                     item.feedback()
             );
 
-            submissionRepository.save(submission);
+                        StudentCourseSubmission saved = submissionRepository.save(submission);
+                        if (previousGrade == null && saved.getGrade() != null) {
+                                notificationService.createOrRefreshGradeNotification(saved.getStudent(), saved);
+                        }
         }
 
         if (cs.getExamStatus() != ExamStatus.COMPLETED) {
@@ -339,6 +349,8 @@ public class LecturerService {
                             .build();
                 });
 
+        Double previousGrade = submission.getGrade();
+
         applyAssessmentResult(
                 submission,
                 item.status(),
@@ -348,6 +360,9 @@ public class LecturerService {
         );
 
         StudentCourseSubmission saved = submissionRepository.save(submission);
+                if (previousGrade == null && saved.getGrade() != null) {
+                        notificationService.createOrRefreshGradeNotification(saved.getStudent(), saved);
+                }
 
         if (cs.getExamStatus() != ExamStatus.COMPLETED && cs.getExamStatus() != ExamStatus.GRADING) {
             cs.setExamStatus(ExamStatus.GRADING);

@@ -35,6 +35,7 @@ public class StudentDashboardService {
     private final StudyGroupMembershipRepository membershipRepository;
     private final EventRepository eventRepository;
     private final StudentCourseSubmissionRepository submissionRepository;
+    private final NotificationService notificationService;
 
     public StudentDashboardResponse getDashboard(String email) {
         AppUser user = userRepository.findByEmail(email)
@@ -90,7 +91,7 @@ public class StudentDashboardService {
                             .getCourseOfStudy().getTotalEcts();
         }
 
-        List<StudentNotificationResponse> notifications = buildNotifications(submissions, groupIds, now);
+        List<StudentNotificationResponse> notifications = notificationService.getRecentStudentNotifications(user.getId());
 
         String courseOfStudyName = null;
         if (user.getStudentProfile() != null
@@ -128,46 +129,4 @@ public class StudentDashboardService {
         );
     }
 
-    private List<StudentNotificationResponse> buildNotifications(
-            List<StudentCourseSubmission> submissions,
-            List<Long> groupIds,
-            LocalDateTime now) {
-
-        List<StudentNotificationResponse> result = new ArrayList<>();
-
-        submissions.stream()
-            .filter(s -> s.getGrade() != null && s.getCourseSeries() != null)
-            .limit(3)
-            .forEach(s -> {
-                String name = s.getCourseSeries().getModule() != null
-                    ? s.getCourseSeries().getModule().getName()
-                    : "Unbekannter Kurs";
-                result.add(new StudentNotificationResponse(
-                    "GRADE", "grade", "success",
-                    "Note " + s.getGrade() + " in <strong>" + name + "</strong> eingetragen",
-                    null
-                ));
-            });
-
-        submissions.stream()
-            .filter(s -> s.getCourseSeries() != null
-                      && s.getCourseSeries().getSubmissionDeadline() != null
-                      && s.getCourseSeries().getSubmissionDeadline().isAfter(now)
-                      && s.getCourseSeries().getSubmissionDeadline().isBefore(now.plusDays(14))
-                      && s.getGrade() == null)
-            .limit(2)
-            .forEach(s -> {
-                String name = s.getCourseSeries().getModule() != null
-                    ? s.getCourseSeries().getModule().getName()
-                    : "Kurs";
-                LocalDateTime deadline = s.getCourseSeries().getSubmissionDeadline();
-                result.add(new StudentNotificationResponse(
-                    "DEADLINE", "upload_file", "warning",
-                    "Abgabefrist <strong>" + name + "</strong> läuft bald ab",
-                    "Frist: " + deadline.toLocalDate()
-                ));
-            });
-
-        return result.stream().limit(5).collect(Collectors.toList());
-    }
 }
