@@ -483,4 +483,27 @@ public class AdminController {
         lecturerAbsenceService.deleteAbsence(id, null, true);
         return ResponseEntity.ok().build();
     }
+
+    /** Sub-Issue #292: Abwesenheit genehmigen */
+    @PatchMapping("/absences/{id}/approve")
+    public ResponseEntity<LecturerAbsenceResponse> approveAbsence(
+            @PathVariable Long id, java.security.Principal principal) {
+        return ResponseEntity.ok(lecturerAbsenceService.approveAbsence(id, principal.getName()));
+    }
+
+    /** Sub-Issue #292: Abwesenheit ablehnen */
+    @PatchMapping("/absences/{id}/reject")
+    public ResponseEntity<LecturerAbsenceResponse> rejectAbsence(
+            @PathVariable Long id,
+            @RequestBody de.campusplatform.campus_platform_service.dto.RejectAbsenceRequest req,
+            java.security.Principal principal) {
+        return ResponseEntity.ok(lecturerAbsenceService.rejectAbsence(id, req.reason(), principal.getName()));
+    }
+
+    /** Sub-Issue #297: Audit-Trail abrufen */
+    @GetMapping("/absences/{id}/history")
+    public ResponseEntity<List<de.campusplatform.campus_platform_service.model.AbsenceAuditLog>> getAbsenceHistory(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(lecturerAbsenceService.getHistory(id));
+    }
 }
