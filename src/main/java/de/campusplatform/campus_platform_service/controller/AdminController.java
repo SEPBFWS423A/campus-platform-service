@@ -37,6 +37,7 @@ public class AdminController {
     private final LecturerAbsenceService lecturerAbsenceService;
     private final RoomBlockoutService roomBlockoutService;
     private final RoomStatusHistoryRepository statusHistoryRepository;
+    private final JobPostingService jobPostingService;
 
 
     @PostMapping("/invitations")
@@ -505,5 +506,50 @@ public class AdminController {
     public ResponseEntity<List<de.campusplatform.campus_platform_service.model.AbsenceAuditLog>> getAbsenceHistory(
             @PathVariable Long id) {
         return ResponseEntity.ok(lecturerAbsenceService.getHistory(id));
+    }
+
+    // =========================================================================
+    // Stellenausschreibungen (Issue #324)
+    // =========================================================================
+
+    @GetMapping("/job-postings")
+    public ResponseEntity<List<JobPostingResponse>> getAllJobPostings(
+            @RequestParam(required = false) de.campusplatform.campus_platform_service.enums.JobStatus status) {
+        if (status != null) {
+            return ResponseEntity.ok(jobPostingService.getByStatus(status));
+        }
+        return ResponseEntity.ok(jobPostingService.getAll());
+    }
+
+    @GetMapping("/job-postings/{id}")
+    public ResponseEntity<JobPostingResponse> getJobPosting(@PathVariable Long id) {
+        return ResponseEntity.ok(jobPostingService.getById(id));
+    }
+
+    @PostMapping("/job-postings")
+    public ResponseEntity<JobPostingResponse> createJobPosting(
+            @Valid @RequestBody JobPostingRequest req,
+            Principal principal) {
+        return ResponseEntity.status(201).body(jobPostingService.create(req, principal.getName()));
+    }
+
+    @PutMapping("/job-postings/{id}")
+    public ResponseEntity<JobPostingResponse> updateJobPosting(
+            @PathVariable Long id,
+            @Valid @RequestBody JobPostingRequest req) {
+        return ResponseEntity.ok(jobPostingService.update(id, req));
+    }
+
+    @PatchMapping("/job-postings/{id}/status")
+    public ResponseEntity<JobPostingResponse> setJobPostingStatus(
+            @PathVariable Long id,
+            @RequestParam de.campusplatform.campus_platform_service.enums.JobStatus status) {
+        return ResponseEntity.ok(jobPostingService.setStatus(id, status));
+    }
+
+    @DeleteMapping("/job-postings/{id}")
+    public ResponseEntity<Void> deleteJobPosting(@PathVariable Long id) {
+        jobPostingService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }
