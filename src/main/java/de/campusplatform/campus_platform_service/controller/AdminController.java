@@ -1,29 +1,17 @@
 package de.campusplatform.campus_platform_service.controller;
 
 import de.campusplatform.campus_platform_service.dto.*;
-import de.campusplatform.campus_platform_service.model.ExamType;
-import de.campusplatform.campus_platform_service.repository.ExamTypeRepository;
-import de.campusplatform.campus_platform_service.model.Room;
-import de.campusplatform.campus_platform_service.repository.RoomRepository;
-import de.campusplatform.campus_platform_service.service.AuthService;
-import de.campusplatform.campus_platform_service.service.FaqService;
-import de.campusplatform.campus_platform_service.service.CourseSeriesService;
-import de.campusplatform.campus_platform_service.service.EventService;
-import de.campusplatform.campus_platform_service.service.ModuleService;
-import de.campusplatform.campus_platform_service.service.StudyGroupService;
-import de.campusplatform.campus_platform_service.service.LecturerAbsenceService;
-import de.campusplatform.campus_platform_service.repository.InstitutionRepository;
-import de.campusplatform.campus_platform_service.model.InstitutionInfo;
-import de.campusplatform.campus_platform_service.repository.CourseOfStudyRepository;
-import de.campusplatform.campus_platform_service.repository.SpecializationRepository;
-import de.campusplatform.campus_platform_service.model.CourseOfStudy;
-import de.campusplatform.campus_platform_service.model.Specialization;
+import de.campusplatform.campus_platform_service.model.*;
+import de.campusplatform.campus_platform_service.repository.*;
+import de.campusplatform.campus_platform_service.service.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -47,6 +35,8 @@ public class AdminController {
     private final CourseSeriesService courseSeriesService;
     private final EventService eventService;
     private final LecturerAbsenceService lecturerAbsenceService;
+    private final RoomBlockoutService roomBlockoutService;
+    private final RoomStatusHistoryRepository statusHistoryRepository;
 
 
     @PostMapping("/invitations")
@@ -144,11 +134,66 @@ public class AdminController {
     }
 
     @PatchMapping("/rooms/{id}/status")
-    public ResponseEntity<Room> updateRoomStatus(@PathVariable Long id, @RequestBody StatusRequest request) {
+    public ResponseEntity<Room> updateRoomStatus(@PathVariable Long id, @RequestBody StatusRequest request, Principal principal) {
         Room room = roomRepository.findById(id).orElseThrow();
-        room.setOperationalStatus(de.campusplatform.campus_platform_service.model.OperationalStatus.valueOf(request.status()));
-        return ResponseEntity.ok(roomRepository.save(room));
+        OperationalStatus oldStatus = room.getOperationalStatus();
+        OperationalStatus newStatus = OperationalStatus.valueOf(request.status());
+        
+        room.setOperationalStatus(newStatus);
+        Room saved = roomRepository.save(room);
+
+        statusHistoryRepository.save(RoomStatusHistory.builder()
+                .room(saved)
+                .previousStatus(oldStatus)
+                .newStatus(newStatus)
+                .changedBy(principal.getName())
+                .changedAt(LocalDateTime.now())
+                .reason(request.reason())
+                .build());
+
+        return ResponseEntity.ok(saved);
     }
+
+
+    // Room Blockouts
+    @PostMapping("/rooms/blockouts")
+    public ResponseEntity<RoomBlockoutResponse> createBlockout(@RequestBody RoomBlockoutRequest req, Principal principal) {
+        return ResponseEntity.ok(roomBlockoutService.createBlockout(req, principal.getName()));
+    }
+
+    @GetMapping("/rooms/blockouts")
+    public ResponseEntity<List<RoomBlockoutResponse>> getBlockouts(
+            @RequestParam(required = false) Long roomId,
+            @RequestParam(required = false) Boolean active) {
+        return ResponseEntity.ok(roomBlockoutService.getBlockouts(roomId, active));
+    }
+
+    @PatchMapping("/rooms/blockouts/{id}/resolve")
+    public ResponseEntity<RoomBlockoutResponse> resolveBlockout(@PathVariable Long id, Principal principal) {
+        return ResponseEntity.ok(roomBlockoutService.resolveBlockout(id, principal.getName()));
+    }
+
+    @DeleteMapping("/rooms/blockouts/{id}")
+    public ResponseEntity<Void> deleteBlockout(@PathVariable Long id) {
+        roomBlockoutService.deleteBlockout(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/rooms/{id}/status-history")
+    public ResponseEntity<List<RoomStatusHistory>> getStatusHistory(@PathVariable Long id) {
+        return ResponseEntity.ok(statusHistoryRepository.findByRoomIdOrderByChangedAtDesc(id));
+    }
+
+
+    @GetMapping("/rooms/{id}/blockouts/conflicts")
+    public ResponseEntity<BlockoutConflictResult> checkConflicts(
+            @PathVariable Long id,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+        return ResponseEntity.ok(roomBlockoutService.checkConflicts(id, start, end));
+    }
+
+
 
     // Study Groups
     @GetMapping("/groups")
