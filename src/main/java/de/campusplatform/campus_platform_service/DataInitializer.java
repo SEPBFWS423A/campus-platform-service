@@ -55,12 +55,11 @@ public class DataInitializer implements CommandLineRunner {
     private final StudentSubmissionService studentSubmissionService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final JobPostingRepository jobPostingRepository;
+    private final StudyProgramRepository studyProgramRepository;
 
     @Override
     @Transactional
     public void run(String... args) {
-        // Sanity check/Migration for existing data: 
-        // Ensure RF and SA are marked as submission types if they weren't already
         examTypeRepository.findAll().forEach(et -> {
             if (("RF".equals(et.getType()) || "SA".equals(et.getType())) && !et.isSubmission()) {
                 et.setSubmission(true);
@@ -251,6 +250,8 @@ public class DataInitializer implements CommandLineRunner {
             assignLecturersToModule(softArch, lecturers);
             assignLecturersToModule(projMgmt, lecturers);
 
+            createDemoStudyPrograms();
+
             if (studyGroupRepository.count() == 0) {
                 StudyGroup g1 = studyGroupRepository.save(
                         StudyGroup.builder().name("BFWS424A").specialization(seSpec).startYear(2024).startQuartal(4).build());
@@ -265,13 +266,12 @@ public class DataInitializer implements CommandLineRunner {
                 createStudentsForGroup(g2, 10, 2000);
                 createStudentsForGroup(g3, 10, 3000);
                 createStudentsForGroup(g4, 3, 4000);
-                
-                // Add student1 and student2 to BFWS423A
-                userRepository.findByEmail(demoStudent1Email).ifPresent(s1 -> 
-                    createMembership(s1, g4)
+
+                userRepository.findByEmail(demoStudent1Email).ifPresent(s1 ->
+                        createMembership(s1, g4)
                 );
-                userRepository.findByEmail(demoStudent2Email).ifPresent(s2 -> 
-                    createMembership(s2, g4)
+                userRepository.findByEmail(demoStudent2Email).ifPresent(s2 ->
+                        createMembership(s2, g4)
                 );
             }
 
@@ -289,57 +289,46 @@ public class DataInitializer implements CommandLineRunner {
                 Room roomA = rooms.isEmpty() ? null : rooms.get(0);
                 Room roomB = rooms.size() > 1 ? rooms.get(1) : roomA;
 
-                // 1. SE Project - Active (G4)
                 CourseSeries seriesG4_SE = courseSeriesRepository.save(CourseSeries.builder()
                         .module(seProject).assignedLecturer(instructor).status(CourseStatus.ACTIVE)
                         .selectedExamType(rf).studyGroups(Set.of(mockG4))
                         .submissionStartDate(LocalDateTime.now().minusDays(10)).submissionDeadline(LocalDateTime.now().plusDays(20))
                         .build());
 
-                // 2. SoftArch - Active (G4)
                 CourseSeries seriesG4_SoftArch = courseSeriesRepository.save(CourseSeries.builder()
                         .module(softArch).assignedLecturer(instructor).status(CourseStatus.ACTIVE)
                         .selectedExamType(kl).studyGroups(Set.of(mockG4))
                         .submissionStartDate(LocalDateTime.now().minusDays(5)).submissionDeadline(LocalDateTime.now().plusDays(30))
                         .build());
 
-                // 3. ProjMgmt - Grading (G4)
                 CourseSeries seriesG4_ProjMgmt = courseSeriesRepository.save(CourseSeries.builder()
                         .module(projMgmt).assignedLecturer(instructor).status(CourseStatus.GRADING)
                         .examStatus(ExamStatus.GRADING).selectedExamType(sa).studyGroups(Set.of(mockG4))
                         .submissionStartDate(LocalDateTime.now().minusDays(60)).submissionDeadline(LocalDateTime.now().minusDays(10))
                         .build());
 
-                // 4. ProjMgmt - Active (G1)
                 CourseSeries seriesG1_ProjMgmt = courseSeriesRepository.save(CourseSeries.builder()
                         .module(projMgmt).assignedLecturer(instructor).status(CourseStatus.ACTIVE)
                         .selectedExamType(sa).studyGroups(Set.of(mockG1))
                         .submissionStartDate(LocalDateTime.now().minusDays(20)).submissionDeadline(LocalDateTime.now().plusDays(15))
                         .build());
 
-                // 5. Prog 2 - Planned (G2)
                 CourseSeries seriesG2_Prog2 = courseSeriesRepository.save(CourseSeries.builder()
                         .module(prog2).assignedLecturer(instructor).status(CourseStatus.PLANNED)
                         .selectedExamType(kl).studyGroups(Set.of(mockG4))
                         .submissionStartDate(LocalDateTime.now().plusWeeks(8)).submissionDeadline(LocalDateTime.now().plusWeeks(12))
                         .build());
 
-                // Events Generation
-                // Group G4 Schedule (Mon/Tue)
-                LocalDateTime lastG4_SE = createSchedule(seriesG4_SE, roomA, 1, 9, 45, 12); // Mondays 09:45
-                LocalDateTime lastG4_SoftArch = createSchedule(seriesG4_SoftArch, roomB, 2, 13, 45, 12); // Tuesdays 13:45
-                LocalDateTime lastG4_ProjMgmt = createSchedule(seriesG4_ProjMgmt, roomA, 1, 13, 45, 12); // Mondays 13:45
-                
-                // Group G1 Schedule
-                LocalDateTime lastG1_ProjMgmt = createSchedule(seriesG1_ProjMgmt, roomB, 3, 9, 45, 12); // Wednesdays 09:45
+                LocalDateTime lastG4_SE = createSchedule(seriesG4_SE, roomA, 1, 9, 45, 12);
+                LocalDateTime lastG4_SoftArch = createSchedule(seriesG4_SoftArch, roomB, 2, 13, 45, 12);
+                LocalDateTime lastG4_ProjMgmt = createSchedule(seriesG4_ProjMgmt, roomA, 1, 13, 45, 12);
+                LocalDateTime lastG1_ProjMgmt = createSchedule(seriesG1_ProjMgmt, roomB, 3, 9, 45, 12);
 
-                // Special Exam Events for Active & Planned (Only KL/RF, always last)
                 attemptAddExam(seriesG4_SE, roomA, lastG4_SE);
                 attemptAddExam(seriesG4_SoftArch, roomB, lastG4_SoftArch);
                 attemptAddExam(seriesG1_ProjMgmt, roomB, lastG1_ProjMgmt);
-                attemptAddExam(seriesG2_Prog2, roomA, LocalDateTime.now().plusWeeks(12)); // No lecture schedule, use base offset
+                attemptAddExam(seriesG2_Prog2, roomA, LocalDateTime.now().plusWeeks(12));
 
-                // Initialize submissions
                 List.of(seriesG4_SE, seriesG4_SoftArch, seriesG4_ProjMgmt, seriesG1_ProjMgmt).forEach(s -> {
                     studentSubmissionService.initializeSubmissionsForCourseSeries(s.getId());
                 });
@@ -348,22 +337,16 @@ public class DataInitializer implements CommandLineRunner {
                 AppUser student2 = userRepository.findByEmail(demoStudent2Email).orElse(null);
 
                 if (student1 != null) {
-                    // SE Project: Submitted
                     createSubmittedSubmissionWithDocument(student1, seriesG4_SE, "se-entwurf.pdf", LocalDateTime.now().minusDays(2));
-                    // ProjMgmt: Graded
-                    createGradedSubmissionWithDocument(student1, seriesG4_ProjMgmt, "management-plan.pdf", 
+                    createGradedSubmissionWithDocument(student1, seriesG4_ProjMgmt, "management-plan.pdf",
                             LocalDateTime.now().minusDays(15), 1.3, 92.0, "Hervorragende Analyse!");
-                    // SoftArch: Pending
                     createPendingSubmission(student1, seriesG4_SoftArch);
                 }
 
                 if (student2 != null) {
-                    // SE Project: In Progress (Pending with document)
                     createPendingSubmissionWithDocument(student2, seriesG4_SE, "draft.pdf", LocalDateTime.now().minusDays(1));
-                    // ProjMgmt: Graded
-                    createGradedSubmissionWithDocument(student2, seriesG4_ProjMgmt, "mgmt.pdf", 
+                    createGradedSubmissionWithDocument(student2, seriesG4_ProjMgmt, "mgmt.pdf",
                             LocalDateTime.now().minusDays(12), 2.7, 75.0, "Gute Ansätze, aber lückenhaft.");
-                    // SoftArch: Pending
                     createPendingSubmission(student2, seriesG4_SoftArch);
                 }
 
@@ -377,9 +360,30 @@ public class DataInitializer implements CommandLineRunner {
                 System.out.println("   Mock Students:   40");
                 System.out.println("   Study Groups:    " + studyGroupRepository.count());
                 System.out.println("   FAQs:            " + faqRepository.count());
+                System.out.println("   Study Programs:  " + studyProgramRepository.count());
                 System.out.println("=================================================================");
             }
         }
+    }
+
+    private void createDemoStudyPrograms() {
+        if (studyProgramRepository.count() > 0) return;
+
+        studyProgramRepository.saveAll(List.of(
+                createStudyProgram("Wirtschaftsinformatik B.Sc.", "Kombination aus BWL und IT"),
+                createStudyProgram("Informatik B.Sc.", "Grundstudium der Informatik"),
+                createStudyProgram("Data Science M.Sc.", "Masterstudiengang für Datenwissenschaft"),
+                createStudyProgram("Medieninformatik B.Sc.", "Informatik mit Medienschwerpunkt"),
+                createStudyProgram("Betriebswirtschaft B.Sc.", "Klassisches BWL-Studium")
+        ));
+    }
+
+    private StudyProgram createStudyProgram(String name, String description) {
+        StudyProgram p = new StudyProgram();
+        p.setName(name);
+        p.setDescription(description);
+        p.setActive(true);
+        return p;
     }
 
     private LocalDateTime createSchedule(CourseSeries series, Room room, int dayOfWeek, int hour, int minute, int weeks) {
@@ -408,8 +412,6 @@ public class DataInitializer implements CommandLineRunner {
         if (series.getSelectedExamType() == null || lastLectureTime == null || series.getStatus() == CourseStatus.PLANNED) return;
         String type = series.getSelectedExamType().getType();
         if ("KL".equals(type) || "RF".equals(type)) {
-            // Use the same time window as the lectures (which is already in lastLectureTime)
-            // startTime is already rounded to 15m from createSchedule
             addExamEvent(series, room, lastLectureTime.plusWeeks(1));
         }
     }
@@ -513,7 +515,6 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-
     private void createSpecializations(CourseOfStudy course, List<String> names) {
         for (String name : names) {
             specializationRepository.save(Specialization.builder()
@@ -529,7 +530,7 @@ public class DataInitializer implements CommandLineRunner {
                         .courseSeries(courseSeries)
                         .student(student)
                         .build());
-        
+
         submission.setStatus(SubmissionStatus.PENDING);
         submissionRepository.save(submission);
     }
@@ -612,108 +613,61 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void createFaqs() {
-        if (faqRepository.count() > 0) {
-            return;
-        }
+        if (faqRepository.count() > 0) return;
 
-        Faq faq1 = Faq.builder()
-                .sortOrder(1)
-                .published(true)
-                .build();
-        faq1.getTranslations().add(FaqTranslation.builder()
-                .faq(faq1)
-                .languageCode("de")
+        Faq faq1 = Faq.builder().sortOrder(1).published(true).build();
+        faq1.getTranslations().add(FaqTranslation.builder().faq(faq1).languageCode("de")
                 .question("Wie kann ich mein Passwort zurücksetzen?")
                 .answer("Nutzen Sie auf der Login-Seite die Funktion \"Passwort vergessen\". Anschließend erhalten Sie per E-Mail einen Link zum Zurücksetzen Ihres Passworts.")
-                .category("Login & Sicherheit")
-                .build());
-        faq1.getTranslations().add(FaqTranslation.builder()
-                .faq(faq1)
-                .languageCode("en")
+                .category("Login & Sicherheit").build());
+        faq1.getTranslations().add(FaqTranslation.builder().faq(faq1).languageCode("en")
                 .question("How can I reset my password?")
                 .answer("Use the \"Forgot password\" function on the login page. You will then receive an email with a link to reset your password.")
-                .category("Login & Security")
-                .build());
+                .category("Login & Security").build());
         faqRepository.save(faq1);
 
-        Faq faq2 = Faq.builder()
-                .sortOrder(2)
-                .published(true)
-                .build();
-        faq2.getTranslations().add(FaqTranslation.builder()
-                .faq(faq2)
-                .languageCode("de")
+        Faq faq2 = Faq.builder().sortOrder(2).published(true).build();
+        faq2.getTranslations().add(FaqTranslation.builder().faq(faq2).languageCode("de")
                 .question("Wo finde ich meinen Prüfungsplan?")
                 .answer("Ihren Prüfungsplan finden Sie im Bereich \"Prüfungen\". Dort werden alle freigegebenen Klausur- und Prüfungstermine angezeigt.")
-                .category("Prüfungen")
-                .build());
-        faq2.getTranslations().add(FaqTranslation.builder()
-                .faq(faq2)
-                .languageCode("en")
+                .category("Prüfungen").build());
+        faq2.getTranslations().add(FaqTranslation.builder().faq(faq2).languageCode("en")
                 .question("Where can I find my exam schedule?")
                 .answer("You can find your exam schedule in the \"Exams\" section. All released exam dates are displayed there.")
-                .category("Exams")
-                .build());
+                .category("Exams").build());
         faqRepository.save(faq2);
 
-        Faq faq3 = Faq.builder()
-                .sortOrder(3)
-                .published(true)
-                .build();
-        faq3.getTranslations().add(FaqTranslation.builder()
-                .faq(faq3)
-                .languageCode("de")
+        Faq faq3 = Faq.builder().sortOrder(3).published(true).build();
+        faq3.getTranslations().add(FaqTranslation.builder().faq(faq3).languageCode("de")
                 .question("Wo finde ich Dokumente und Formulare?")
                 .answer("Alle freigegebenen Dokumente und Formulare finden Sie im Bereich \"Downloads\".")
-                .category("Downloads")
-                .build());
-        faq3.getTranslations().add(FaqTranslation.builder()
-                .faq(faq3)
-                .languageCode("en")
+                .category("Downloads").build());
+        faq3.getTranslations().add(FaqTranslation.builder().faq(faq3).languageCode("en")
                 .question("Where can I find documents and forms?")
                 .answer("All released documents and forms can be found in the \"Downloads\" section.")
-                .category("Downloads")
-                .build());
+                .category("Downloads").build());
         faqRepository.save(faq3);
 
-        Faq faq4 = Faq.builder()
-                .sortOrder(4)
-                .published(true)
-                .build();
-        faq4.getTranslations().add(FaqTranslation.builder()
-                .faq(faq4)
-                .languageCode("de")
+        Faq faq4 = Faq.builder().sortOrder(4).published(true).build();
+        faq4.getTranslations().add(FaqTranslation.builder().faq(faq4).languageCode("de")
                 .question("Wie kann ich die Hochschule kontaktieren?")
                 .answer("Die Kontaktinformationen der Hochschule und des Sekretariats finden Sie im Bereich \"Info\".")
-                .category("Kontakt")
-                .build());
-        faq4.getTranslations().add(FaqTranslation.builder()
-                .faq(faq4)
-                .languageCode("en")
+                .category("Kontakt").build());
+        faq4.getTranslations().add(FaqTranslation.builder().faq(faq4).languageCode("en")
                 .question("How can I contact the university?")
                 .answer("You can find the university and secretariat contact details in the \"Info\" section.")
-                .category("Contact")
-                .build());
+                .category("Contact").build());
         faqRepository.save(faq4);
 
-        Faq faq5 = Faq.builder()
-                .sortOrder(5)
-                .published(true)
-                .build();
-        faq5.getTranslations().add(FaqTranslation.builder()
-                .faq(faq5)
-                .languageCode("de")
+        Faq faq5 = Faq.builder().sortOrder(5).published(true).build();
+        faq5.getTranslations().add(FaqTranslation.builder().faq(faq5).languageCode("de")
                 .question("Kann ich meine Profildaten selbst ändern?")
                 .answer("Einige persönliche Daten können im Profilbereich geändert werden. Offizielle Stammdaten werden durch die Verwaltung gepflegt.")
-                .category("Benutzerkonto")
-                .build());
-        faq5.getTranslations().add(FaqTranslation.builder()
-                .faq(faq5)
-                .languageCode("en")
+                .category("Benutzerkonto").build());
+        faq5.getTranslations().add(FaqTranslation.builder().faq(faq5).languageCode("en")
                 .question("Can I change my profile data myself?")
                 .answer("Some personal data can be changed in the profile section. Official master data is maintained by the administration.")
-                .category("User Account")
-                .build());
+                .category("User Account").build());
         faqRepository.save(faq5);
     }
 

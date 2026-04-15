@@ -23,17 +23,17 @@ app:
   frontend:
     url:
   jwt:
-    secret:
+    secret: meinSuperGeheimesJwtSecretMitMindestens32Zeichen!
   initial:
     admin:
-      email:
-      password:
+      email: admin@campusplatform.de
+      password: admin
     lecturer:
-      email:
-      password:
-    student:
-      email:
-      password:
+      email: lecturer@campusplatform.de
+      password: lecturer
+    student: 
+      email: student@campusplatform.de
+      password: student
   defaults:
     theme: theme-azure
     brightness: light

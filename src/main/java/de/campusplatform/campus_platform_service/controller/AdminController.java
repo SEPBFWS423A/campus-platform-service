@@ -38,6 +38,7 @@ public class AdminController {
     private final RoomBlockoutService roomBlockoutService;
     private final RoomStatusHistoryRepository statusHistoryRepository;
     private final JobPostingService jobPostingService;
+    private final ApplicationService applicationService;
 
 
     @PostMapping("/invitations")
@@ -551,5 +552,17 @@ public class AdminController {
     public ResponseEntity<Void> deleteJobPosting(@PathVariable Long id) {
         jobPostingService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+    // Applications
+    @GetMapping("/applications")
+    public ResponseEntity<List<AdminApplicationResponse>> getAllApplications() {
+        return ResponseEntity.ok(applicationService.getAllApplications());
+    }
+
+    @PatchMapping("/applications/{id}/status")
+    public ResponseEntity<AdminApplicationResponse> updateApplicationStatus(
+            @PathVariable Long id,
+            @RequestParam String status) {
+        return ResponseEntity.ok(applicationService.updateStatus(id, status));
     }
 }
