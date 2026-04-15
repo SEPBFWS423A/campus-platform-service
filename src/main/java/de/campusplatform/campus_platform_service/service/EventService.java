@@ -197,8 +197,12 @@ public class EventService {
 
     private boolean isRoomAvailable(Room room, LocalDateTime start, Integer duration, Long excludeId) {
         LocalDateTime end = start.plusMinutes(duration);
-        List<Event> overlaps = eventRepository.findOverlappingEvents(java.util.Collections.singletonList(room.getId()), start, end, excludeId);
-        return overlaps.isEmpty();
+        // Check Academic Events
+        if (!eventRepository.findOverlappingEvents(java.util.Collections.singletonList(room.getId()), start, end, excludeId).isEmpty()) {
+            return false;
+        }
+        // Check Community Events
+        return communityEventRepository.findOverlappingEvents(room.getId(), start, end, null).isEmpty();
     }
 
     private LocalDateTime addBusinessDays(LocalDateTime start, int days) {
@@ -444,7 +448,6 @@ public class EventService {
         }
         
         LocalDateTime endTime = startTime.plusMinutes(durationMinutes);
-        List<Long> occupiedRoomIds = eventRepository.findOccupiedRoomIds(startTime, endTime, excludeEventId);
         
         int requiredSeats = 0;
         EventType eventType = null;
@@ -468,7 +471,7 @@ public class EventService {
         return allRooms.stream()
                 .filter(room -> room.getOperationalStatus() == de.campusplatform.campus_platform_service.model.OperationalStatus.AKTIV
                              || room.getOperationalStatus() == de.campusplatform.campus_platform_service.model.OperationalStatus.EINGESCHRAENKT)
-                .filter(room -> !occupiedRoomIds.contains(room.getId()))
+                .filter(room -> isRoomAvailable(room, startTime, durationMinutes, excludeEventId))
                 .filter(room -> finalRequiredSeats <= 0 || hasCapacity(room, finalRequiredSeats, finalEventType))
                 .collect(Collectors.toList());
     }
