@@ -21,8 +21,14 @@ public class GeneralDocumentService {
     private final GeneralDocumentRepository generalDocumentRepository;
 
     @Transactional(readOnly = true)
-    public List<GeneralDocumentResponse> getAllDocuments() {
-        return generalDocumentRepository.findAll().stream()
+    public List<GeneralDocumentResponse> getAllDocuments(String category) {
+        List<GeneralDocument> docs;
+        if (category == null || category.isBlank()) {
+            docs = generalDocumentRepository.findAll();
+        } else {
+            docs = generalDocumentRepository.findByCategory(category);
+        }
+        return docs.stream()
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -43,6 +49,7 @@ public class GeneralDocumentService {
                 .fileSize(request.fileSize() != null ? request.fileSize() : (long) decodedContent.length)
                 .contentBase64(request.contentBase64().trim())
                 .uploadedAt(LocalDateTime.now())
+                .category(request.category() != null ? request.category() : "GENERAL")
                 .build();
 
         GeneralDocument saved = generalDocumentRepository.save(document);
@@ -70,7 +77,8 @@ public class GeneralDocumentService {
                 doc.getFileName(),
                 doc.getMimeType(),
                 doc.getFileSize(),
-                doc.getUploadedAt()
+                doc.getUploadedAt(),
+                doc.getCategory()
         );
     }
 }

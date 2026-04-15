@@ -8,5 +8,6 @@ public record UploadGeneralDocumentRequest(
     @NotBlank String fileName,
     @NotBlank String mimeType,
     @NotBlank String contentBase64,
-    Long fileSize
+    Long fileSize,
+    String category
 ) {}

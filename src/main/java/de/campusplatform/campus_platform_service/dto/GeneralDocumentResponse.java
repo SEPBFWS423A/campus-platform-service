@@ -8,5 +8,6 @@ public record GeneralDocumentResponse(
     String fileName,
     String mimeType,
     Long fileSize,
-    LocalDateTime uploadedAt
+    LocalDateTime uploadedAt,
+    String category
 ) {}

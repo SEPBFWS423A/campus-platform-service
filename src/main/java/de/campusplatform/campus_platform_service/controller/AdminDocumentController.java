@@ -20,8 +20,8 @@ public class AdminDocumentController {
     private final GeneralDocumentService generalDocumentService;
 
     @GetMapping
-    public ResponseEntity<List<GeneralDocumentResponse>> getAllDocuments() {
-        return ResponseEntity.ok(generalDocumentService.getAllDocuments());
+    public ResponseEntity<List<GeneralDocumentResponse>> getAllDocuments(@org.springframework.web.bind.annotation.RequestParam(required = false) String category) {
+        return ResponseEntity.ok(generalDocumentService.getAllDocuments(category));
     }
 
     @PostMapping

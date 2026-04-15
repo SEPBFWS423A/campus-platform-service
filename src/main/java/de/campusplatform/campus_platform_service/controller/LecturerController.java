@@ -8,7 +8,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Base64;
 import java.util.List;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 @RestController
 @RequestMapping("/api/lecturer")
@@ -56,5 +59,34 @@ public class LecturerController {
     @PutMapping("/course-series/{id}/single-grade")
     public ResponseEntity<StudentSubmissionResponse> applySingleGrade(@PathVariable Long id, @RequestBody SingleGradeRequest item) {
         return ResponseEntity.ok(lecturerService.applySingleGrade(id, item));
+    }
+
+    @GetMapping("/course-series/{id}/documents")
+    public ResponseEntity<List<CourseDocumentResponse>> getCourseDocuments(@PathVariable Long id) {
+        return ResponseEntity.ok(lecturerService.getCourseDocumentsForSeries(id));
+    }
+
+    @PostMapping("/course-series/{id}/documents")
+    public ResponseEntity<Void> uploadCourseDocument(@PathVariable Long id, @RequestBody CourseDocumentRequest request) {
+        lecturerService.uploadCourseDocument(id, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/course-series/{id}/documents/{documentId}")
+    public ResponseEntity<Void> deleteCourseDocument(@PathVariable Long id, @PathVariable Long documentId) {
+        lecturerService.deleteCourseDocument(id, documentId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/course-series/{id}/documents/{documentId}/download")
+    public ResponseEntity<byte[]> downloadCourseDocument(@PathVariable Long id, @PathVariable Long documentId) {
+        de.campusplatform.campus_platform_service.model.CourseDocument document = lecturerService.getCourseDocumentContent(id, documentId);
+        
+        byte[] content = Base64.getDecoder().decode(document.getContentBase64());
+        
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(document.getMimeType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + document.getFileName() + "\"")
+                .body(content);
     }
 }

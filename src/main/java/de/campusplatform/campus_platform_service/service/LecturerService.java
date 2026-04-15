@@ -22,20 +22,30 @@ public class LecturerService {
     private final AppUserRepository userRepository;
     private final ExamDocumentRepository documentRepository;
     private final GradeScaleService gradeScaleService;
+    private final CourseDocumentRepository courseDocumentRepository;
 
     public LecturerService(CourseSeriesRepository courseSeriesRepository,
                            StudentCourseSubmissionRepository submissionRepository,
                            AppUserRepository userRepository,
-                           ExamDocumentRepository documentRepository, GradeScaleService gradeScaleService) {
+                           ExamDocumentRepository documentRepository, 
+                           GradeScaleService gradeScaleService,
+                           CourseDocumentRepository courseDocumentRepository) {
         this.courseSeriesRepository = courseSeriesRepository;
         this.submissionRepository = submissionRepository;
         this.userRepository = userRepository;
         this.documentRepository = documentRepository;
         this.gradeScaleService = gradeScaleService;
+        this.courseDocumentRepository = courseDocumentRepository;
     }
 
     public List<LecturerCourseResponse> getCoursesForLecturer(Long lecturerId) {
         return courseSeriesRepository.findByAssignedLecturerId(lecturerId).stream()
+                .map(this::mapToLecturerCourseResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<LecturerCourseResponse> getCoursesForStudent(Long studentId) {
+        return courseSeriesRepository.findByStudentId(studentId).stream()
                 .map(this::mapToLecturerCourseResponse)
                 .collect(Collectors.toList());
     }
@@ -302,5 +312,69 @@ public class LecturerService {
                 .map(SubmissionDocument::getFileName)
                 .findFirst()
                 .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CourseDocumentResponse> getCourseDocumentsForSeries(Long seriesId) {
+        CourseSeries cs = courseSeriesRepository.findById(seriesId)
+                .orElseThrow(() -> new AppException("error.courseSeries.notFound"));
+        
+        return cs.getCourseDocuments().stream()
+                .map(d -> new CourseDocumentResponse(
+                        d.getId(),
+                        d.getDisplayName(),
+                        d.getFileName(),
+                        d.getMimeType(),
+                        d.getFileSize(),
+                        d.getUploadedAt()
+                ))
+                .sorted(java.util.Comparator.comparing(CourseDocumentResponse::uploadedAt).reversed())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void uploadCourseDocument(Long seriesId, CourseDocumentRequest request) {
+        CourseSeries cs = courseSeriesRepository.findById(seriesId)
+                .orElseThrow(() -> new AppException("error.courseSeries.notFound"));
+        
+        if (request.contentBase64() == null || request.contentBase64().trim().isEmpty()) {
+            throw new AppException("Document content cannot be empty.");
+        }
+
+        CourseDocument doc = CourseDocument.builder()
+                .courseSeries(cs)
+                .displayName(request.displayName())
+                .fileName(request.fileName())
+                .mimeType(request.mimeType())
+                .fileSize(request.fileSize())
+                .contentBase64(request.contentBase64())
+                .uploadedAt(LocalDateTime.now())
+                .build();
+        
+        courseDocumentRepository.save(doc);
+    }
+
+    @Transactional
+    public void deleteCourseDocument(Long seriesId, Long documentId) {
+        CourseDocument doc = courseDocumentRepository.findById(documentId)
+                .orElseThrow(() -> new AppException("Document not found"));
+        
+        if (!doc.getCourseSeries().getId().equals(seriesId)) {
+            throw new AppException("Document does not belong to this course series");
+        }
+        
+        courseDocumentRepository.delete(doc);
+    }
+
+    @Transactional(readOnly = true)
+    public CourseDocument getCourseDocumentContent(Long seriesId, Long documentId) {
+        CourseDocument doc = courseDocumentRepository.findById(documentId)
+                .orElseThrow(() -> new AppException("Document not found"));
+        
+        if (!doc.getCourseSeries().getId().equals(seriesId)) {
+            throw new AppException("Document does not belong to this course series");
+        }
+        
+        return doc;
     }
 }

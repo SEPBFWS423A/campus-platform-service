@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface GeneralDocumentRepository extends JpaRepository<GeneralDocument, Long> {
+    java.util.List<GeneralDocument> findByCategory(String category);
 }

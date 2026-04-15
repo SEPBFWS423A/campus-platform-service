@@ -23,8 +23,8 @@ public class DocumentController {
     private final GeneralDocumentService generalDocumentService;
 
     @GetMapping
-    public ResponseEntity<List<GeneralDocumentResponse>> getAllDocuments() {
-        return ResponseEntity.ok(generalDocumentService.getAllDocuments());
+    public ResponseEntity<List<GeneralDocumentResponse>> getAllDocuments(@org.springframework.web.bind.annotation.RequestParam(required = false) String category) {
+        return ResponseEntity.ok(generalDocumentService.getAllDocuments(category));
     }
 
     @GetMapping("/{id}/download")
@@ -37,5 +37,18 @@ public class DocumentController {
                 .contentType(MediaType.parseMediaType(document.getMimeType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + document.getFileName() + "\"")
                 .body(content);
+    }
+
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('ADMIN', 'LECTURER', 'STUDENT')")
+    @org.springframework.web.bind.annotation.PostMapping
+    public ResponseEntity<GeneralDocumentResponse> uploadDocument(@org.springframework.web.bind.annotation.RequestBody de.campusplatform.campus_platform_service.dto.UploadGeneralDocumentRequest request) {
+        return ResponseEntity.ok(generalDocumentService.uploadDocument(request));
+    }
+
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('ADMIN', 'LECTURER', 'STUDENT')")
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteDocument(@PathVariable Long id) {
+        generalDocumentService.deleteDocument(id);
+        return ResponseEntity.noContent().build();
     }
 }

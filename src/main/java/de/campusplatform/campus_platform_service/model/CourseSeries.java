@@ -49,6 +49,10 @@ public class CourseSeries {
 
     @OneToMany(mappedBy = "courseSeries", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    private Set<CourseDocument> courseDocuments = new java.util.HashSet<>();
+
+    @OneToMany(mappedBy = "courseSeries", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<Event> events = new java.util.HashSet<>();
 
     @OneToMany(mappedBy = "courseSeries", cascade = CascadeType.ALL, orphanRemoval = true)

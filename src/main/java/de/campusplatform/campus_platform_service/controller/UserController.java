@@ -8,6 +8,7 @@ import de.campusplatform.campus_platform_service.repository.RoomRepository;
 import de.campusplatform.campus_platform_service.service.AuthService;
 import de.campusplatform.campus_platform_service.service.FaqService;
 import de.campusplatform.campus_platform_service.service.StudentSubmissionService;
+import de.campusplatform.campus_platform_service.service.LecturerService;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,18 +28,21 @@ public class UserController {
     private final InstitutionRepository institutionRepository;
     private final FaqService faqService;
     private final StudentSubmissionService studentSubmissionService;
+    private final LecturerService lecturerService;
 
 
     public UserController(AuthService authService,
                           RoomRepository roomRepository,
                           InstitutionRepository institutionRepository,
                           FaqService faqService,
-                          StudentSubmissionService studentSubmissionService) {
+                          StudentSubmissionService studentSubmissionService,
+                          LecturerService lecturerService) {
         this.authService = authService;
         this.roomRepository = roomRepository;
         this.institutionRepository = institutionRepository;
         this.faqService = faqService;
         this.studentSubmissionService = studentSubmissionService;
+        this.lecturerService = lecturerService;
     }
 
     @GetMapping("/institution")
@@ -177,5 +181,42 @@ public class UserController {
     ) {
         studentSubmissionService.submitSubmission(submissionId, userDetails.getUsername());
         return ResponseEntity.ok().build();
+    }
+
+    // COURSE DOCUMENTS
+    @GetMapping("/courses")
+    public ResponseEntity<List<LecturerCourseResponse>> getMyCourses(
+            @AuthenticationPrincipal de.campusplatform.campus_platform_service.security.CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(lecturerService.getCoursesForStudent(userDetails.appUser().getId()));
+    }
+
+    @GetMapping("/course-series/{id}/documents")
+    public ResponseEntity<List<CourseDocumentResponse>> getCourseDocuments(@PathVariable Long id) {
+        return ResponseEntity.ok(lecturerService.getCourseDocumentsForSeries(id));
+    }
+
+    @PostMapping("/course-series/{id}/documents")
+    public ResponseEntity<Void> uploadCourseDocument(@PathVariable Long id, @RequestBody CourseDocumentRequest request) {
+        lecturerService.uploadCourseDocument(id, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/course-series/{id}/documents/{documentId}")
+    public ResponseEntity<Void> deleteCourseDocument(@PathVariable Long id, @PathVariable Long documentId) {
+        lecturerService.deleteCourseDocument(id, documentId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/course-series/{id}/documents/{documentId}/download")
+    public ResponseEntity<byte[]> downloadCourseDocument(@PathVariable Long id, @PathVariable Long documentId) {
+        de.campusplatform.campus_platform_service.model.CourseDocument document = lecturerService.getCourseDocumentContent(id, documentId);
+        
+        byte[] content = java.util.Base64.getDecoder().decode(document.getContentBase64());
+        
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(document.getMimeType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + document.getFileName() + "\"")
+                .body(content);
     }
 }

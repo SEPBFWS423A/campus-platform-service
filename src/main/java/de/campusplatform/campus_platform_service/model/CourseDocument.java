@@ -11,12 +11,16 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "general_document")
-public class GeneralDocument {
+@Table(name = "course_document")
+public class CourseDocument {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_series_id", nullable = false)
+    private CourseSeries courseSeries;
 
     @Column(nullable = false)
     private String displayName;
@@ -36,8 +40,4 @@ public class GeneralDocument {
 
     @Column(nullable = false)
     private LocalDateTime uploadedAt;
-
-    @Builder.Default
-    @Column(nullable = false)
-    private String category = "GENERAL";
 }
