@@ -10,6 +10,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import de.campusplatform.campus_platform_service.enums.HolidayType;
 
 import java.security.Principal;
 
@@ -38,7 +39,8 @@ public class AdminController {
     private final RoomBlockoutService roomBlockoutService;
     private final RoomStatusHistoryRepository statusHistoryRepository;
     private final JobPostingService jobPostingService;
-
+    private final ApplicationService applicationService;
+    private final HolidayRepository holidayRepository;
 
     @PostMapping("/invitations")
     public ResponseEntity<Void> inviteUser(@RequestBody InvitationRequest request) {
@@ -552,4 +554,38 @@ public class AdminController {
         jobPostingService.delete(id);
         return ResponseEntity.noContent().build();
     }
+    // Applications
+    @GetMapping("/applications")
+    public ResponseEntity<List<AdminApplicationResponse>> getAllApplications() {
+        return ResponseEntity.ok(applicationService.getAllApplications());
+    }
+
+    @PatchMapping("/applications/{id}/status")
+    public ResponseEntity<AdminApplicationResponse> updateApplicationStatus(
+            @PathVariable Long id,
+            @RequestParam String status) {
+        return ResponseEntity.ok(applicationService.updateStatus(id, status));
+    }
+    // Holidays
+@GetMapping("/holidays")
+public ResponseEntity<List<HolidayResponse>> getAllHolidays() {
+    return ResponseEntity.ok(holidayRepository.findAllByOrderByStartDateAsc()
+        .stream().map(HolidayResponse::from).toList());
+}
+
+@PostMapping("/holidays")
+public ResponseEntity<HolidayResponse> createHoliday(@RequestBody HolidayRequest request) {
+    Holiday holiday = new Holiday();
+    holiday.setName(request.name());
+    holiday.setStartDate(request.startDate());
+    holiday.setEndDate(request.endDate());
+    holiday.setType(de.campusplatform.campus_platform_service.enums.HolidayType.valueOf(request.type().toUpperCase()));
+    return ResponseEntity.ok(HolidayResponse.from(holidayRepository.save(holiday)));
+}
+
+@DeleteMapping("/holidays/{id}")
+public ResponseEntity<Void> deleteHoliday(@PathVariable Long id) {
+    holidayRepository.deleteById(id);
+    return ResponseEntity.noContent().build();
+}
 }
