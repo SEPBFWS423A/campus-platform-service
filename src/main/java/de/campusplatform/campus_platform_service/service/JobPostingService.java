@@ -65,8 +65,12 @@ public class JobPostingService {
         posting.setDeadline(req.deadline());
         if (req.autoPublish() != null) {
             posting.setAutoPublish(req.autoPublish());
-            if (Boolean.TRUE.equals(req.autoPublish()) && posting.getStatus() == JobStatus.ENTWURF) {
+            if (Boolean.TRUE.equals(req.autoPublish())) {
+                // Toggle ON → Posting ist öffentlich sichtbar
                 posting.setStatus(JobStatus.AKTIV);
+            } else if (posting.getStatus() == JobStatus.AKTIV) {
+                // Toggle OFF bei aktiver Ausschreibung → vom öffentlichen Board entfernen
+                posting.setStatus(JobStatus.GESCHLOSSEN);
             }
         }
         return toResponse(repository.save(posting));
