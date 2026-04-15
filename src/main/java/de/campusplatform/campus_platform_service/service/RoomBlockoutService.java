@@ -2,13 +2,16 @@ package de.campusplatform.campus_platform_service.service;
 
 import de.campusplatform.campus_platform_service.dto.*;
 import de.campusplatform.campus_platform_service.model.*;
+import de.campusplatform.campus_platform_service.repository.CommunityEventRepository;
 import de.campusplatform.campus_platform_service.repository.RoomBlockoutRepository;
 import de.campusplatform.campus_platform_service.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,6 +22,7 @@ public class RoomBlockoutService {
     private final RoomBlockoutRepository blockoutRepository;
     private final RoomRepository roomRepository;
     private final EventService eventService;
+    private final CommunityEventRepository communityEventRepository;
 
     public BlockoutConflictResult checkConflicts(Long roomId, LocalDateTime start, LocalDateTime end) {
         List<RoomBlockoutResponse> overlaps = blockoutRepository.findActiveByRoomAndTimeOverlap(roomId, start, end)
@@ -29,6 +33,20 @@ public class RoomBlockoutService {
                 .filter(e -> e.roomId() != null && e.roomId().equals(roomId))
                 .collect(Collectors.toList());
 
+        List<CommunityEvent> overlappingCommunityEvents = communityEventRepository.findOverlappingEvents(roomId, start, end, null);
+        for (CommunityEvent ce : overlappingCommunityEvents) {
+            affectedEvents.add(new RoomScheduleEventResponse(
+                ce.getId(),
+                ce.getTitle(),
+                "COMMUNITY_EVENT",
+                roomId,
+                ce.getRoom() != null ? ce.getRoom().getName() : "Unknown",
+                ce.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                (int) Duration.between(ce.getStartTime(), ce.getEndTime()).toMinutes(),
+                null,
+                ce.getCategory().name()
+            ));
+        }
 
         return new BlockoutConflictResult(overlaps, affectedEvents);
     }

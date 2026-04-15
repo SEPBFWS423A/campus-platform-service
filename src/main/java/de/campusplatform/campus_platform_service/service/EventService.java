@@ -3,6 +3,7 @@ package de.campusplatform.campus_platform_service.service;
 import de.campusplatform.campus_platform_service.dto.AdminEventResponse;
 import de.campusplatform.campus_platform_service.dto.AutoScheduleRequest;
 import de.campusplatform.campus_platform_service.dto.EventRequest;
+import de.campusplatform.campus_platform_service.repository.CommunityEventRepository;
 import de.campusplatform.campus_platform_service.dto.RoomScheduleEventResponse;
 import de.campusplatform.campus_platform_service.dto.RoomUtilizationResponse;
 import de.campusplatform.campus_platform_service.enums.EventType;
@@ -38,17 +39,20 @@ public class EventService {
     private final RoomRepository roomRepository;
     private final StudentSubmissionService studentSubmissionService;
     private final LecturerAbsenceService lecturerAbsenceService;
+    private final CommunityEventRepository communityEventRepository;
 
     public EventService(EventRepository eventRepository, 
                         CourseSeriesRepository courseSeriesRepository, 
                         RoomRepository roomRepository,
                         StudentSubmissionService studentSubmissionService,
-                        LecturerAbsenceService lecturerAbsenceService) {
+                        LecturerAbsenceService lecturerAbsenceService,
+                        CommunityEventRepository communityEventRepository) {
         this.eventRepository = eventRepository;
         this.courseSeriesRepository = courseSeriesRepository;
         this.roomRepository = roomRepository;
         this.studentSubmissionService = studentSubmissionService;
         this.lecturerAbsenceService = lecturerAbsenceService;
+        this.communityEventRepository = communityEventRepository;
     }
 
     public List<AdminEventResponse> getEventsForSeries(Long seriesId) {
@@ -222,6 +226,12 @@ public class EventService {
             List<Event> overlaps = eventRepository.findOverlappingEvents(roomIds, proposedStart, end, null);
             if (!overlaps.isEmpty()) {
                 return true;
+            }
+            
+            for (Long roomId : roomIds) {
+                if (!communityEventRepository.findOverlappingEvents(roomId, proposedStart, end, null).isEmpty()) {
+                    return true;
+                }
             }
         }
 
@@ -480,6 +490,13 @@ public class EventService {
 
         if (!overlaps.isEmpty()) {
             throw new AppException("eventManagement.roomCollision");
+        }
+
+        // 1b. Community Event Collision
+        for (Long roomId : roomIds) {
+            if (!communityEventRepository.findOverlappingEvents(roomId, event.getStartTime(), end, null).isEmpty()) {
+                throw new AppException("eventManagement.communityEventCollision");
+            }
         }
 
         // 2. Lecturer Collision

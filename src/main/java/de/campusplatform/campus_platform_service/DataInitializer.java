@@ -55,6 +55,7 @@ public class DataInitializer implements CommandLineRunner {
     private final StudentSubmissionService studentSubmissionService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final JobPostingRepository jobPostingRepository;
+    private final CommunityEventRepository communityEventRepository;
 
     @Override
     @Transactional
@@ -366,9 +367,10 @@ public class DataInitializer implements CommandLineRunner {
                     // SoftArch: Pending
                     createPendingSubmission(student2, seriesG4_SoftArch);
                 }
-
+                createDemoCommunityEvents();
                 System.out.println("=================================================================");
                 System.out.println("   ✓ CAMPUS PLATFORM DATA INITIALIZED");
+
                 System.out.println("   Institution:     " + glCampus.getUniversityName() + " (" + glCampus.getCity() + ")");
                 System.out.println("   Website:         https://gl.campusplatform.de");
                 System.out.println("   Exam Types:      " + examTypeRepository.count());
@@ -748,5 +750,52 @@ public class DataInitializer implements CommandLineRunner {
                 .autoPublish(true)
                 .createdBy("admin@campusplatform.de")
                 .build());
+    }
+
+    private void createDemoCommunityEvents() {
+        if (communityEventRepository.count() > 0) return;
+
+        AppUser student2 = userRepository.findByEmail(demoStudent2Email).orElse(null);
+        if (student2 == null) return;
+
+        AppUser student1 = userRepository.findByEmail(demoStudent1Email).orElse(null);
+        AppUser student1003 = userRepository.findByEmail("student1003.software3@campusplatform.de").orElse(null);
+        AppUser student1004 = userRepository.findByEmail("student1004.software4@campusplatform.de").orElse(null);
+
+        CommunityEvent getTogether = CommunityEvent.builder()
+                .title("Get-Together: Grillen & Kennenlernen")
+                .description("Hey zusammen! Wir haben uns überlegt, dass jetzt zumm Start ein kleines Kennenlern-Event doch ganz nett wäre.\n" +
+                        "Wir werfen den Grill an und wollen uns in lockerer Atmosphäre kennenlernen. " +
+                        "Bringt euch gerne eigene Getränke mit, für Würstchen (auch vegetarisch) ist gesorgt!")
+                .category(StudentEventCategory.SOCIAL)
+                .startTime(LocalDateTime.now().plusDays(5).withHour(18).withMinute(0))
+                .endTime(LocalDateTime.now().plusDays(5).withHour(22).withMinute(0))
+                .customLocation("Innenhof des Campus (hinter Hauptgebäude)")
+                .creator(student2)
+                .build();
+
+        if (student1 != null) getTogether.getAttendees().add(student1);
+        if (student1003 != null) getTogether.getAttendees().add(student1003);
+        if (student1004 != null) getTogether.getAttendees().add(student1004);
+
+        communityEventRepository.save(getTogether);
+
+        AppUser student1005 = userRepository.findByEmail("student1005.software5@campusplatform.de").orElse(student2);
+
+        CommunityEvent recap = CommunityEvent.builder()
+                .title("Lerngruppe: Programmierung 1 Recap")
+                .description("Wir gehen gemeinsam die Übungen der letzten zwei Wochen durch und klären offene Fragen " +
+                        "zu Rekursion und Datenstrukturen. Jeder ist willkommen!")
+                .category(StudentEventCategory.STUDY)
+                .startTime(LocalDateTime.now().plusDays(10).withHour(16).withMinute(0))
+                .endTime(LocalDateTime.now().plusDays(10).withHour(18).withMinute(0))
+                .customLocation("Discord: Lerngruppe-Kanal")
+                .creator(student1005)
+                .build();
+
+        if (student1004 != null && !student1005.equals(student1004)) recap.getAttendees().add(student1004);
+        if (student1003 != null && !student1005.equals(student1003)) recap.getAttendees().add(student1003);
+
+        communityEventRepository.save(recap);
     }
 }
