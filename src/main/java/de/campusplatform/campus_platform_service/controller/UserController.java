@@ -57,6 +57,11 @@ public class UserController {
         return ResponseEntity.ok(roomRepository.findAll());
     }
 
+    @GetMapping("/lecturers")
+    public ResponseEntity<List<LecturerListResponse>> getAllLecturers() {
+        return ResponseEntity.ok(lecturerService.getAllLecturers());
+    }
+
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getMyProfile(
             @AuthenticationPrincipal UserDetails userDetails

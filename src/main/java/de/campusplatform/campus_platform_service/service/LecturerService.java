@@ -38,6 +38,12 @@ public class LecturerService {
         this.courseDocumentRepository = courseDocumentRepository;
     }
 
+    public List<LecturerListResponse> getAllLecturers() {
+        return userRepository.findByRole(de.campusplatform.campus_platform_service.enums.Role.LECTURER).stream()
+                .map(u -> new LecturerListResponse(u.getId(), u.getFirstName(), u.getLastName(), u.getTitle()))
+                .collect(Collectors.toList());
+    }
+
     public List<LecturerCourseResponse> getCoursesForLecturer(Long lecturerId) {
         return courseSeriesRepository.findByAssignedLecturerId(lecturerId).stream()
                 .map(this::mapToLecturerCourseResponse)

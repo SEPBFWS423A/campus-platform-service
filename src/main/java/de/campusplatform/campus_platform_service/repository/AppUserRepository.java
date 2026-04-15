@@ -13,6 +13,8 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
 
     long countByRoleIn(List<Role> roles);
 
+    List<AppUser> findByRole(Role role);
+
     @org.springframework.data.jpa.repository.Query("SELECT DISTINCT u FROM CourseSeries cs " +
             "JOIN cs.studyGroups sg " +
             "JOIN sg.memberships m " +
