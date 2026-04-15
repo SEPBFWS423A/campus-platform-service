@@ -11,6 +11,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import de.campusplatform.campus_platform_service.enums.HolidayType;
+import de.campusplatform.campus_platform_service.repository.HolidayRepository;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -56,6 +58,7 @@ public class DataInitializer implements CommandLineRunner {
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final JobPostingRepository jobPostingRepository;
     private final StudyProgramRepository studyProgramRepository;
+    private final HolidayRepository holidayRepository;
 
     @Override
     @Transactional
@@ -277,6 +280,7 @@ public class DataInitializer implements CommandLineRunner {
 
             createFaqs();
             createDemoJobPostings();
+            createDemoHolidays();
 
             if (courseSeriesRepository.count() == 0) {
                 List<StudyGroup> allGroups = studyGroupRepository.findAll();
@@ -703,4 +707,24 @@ public class DataInitializer implements CommandLineRunner {
                 .createdBy("admin@campusplatform.de")
                 .build());
     }
+    private void createDemoHolidays() {
+    if (holidayRepository.count() > 0) return;
+
+    List<Holiday> holidays = List.of(
+        createHoliday("Ostern", LocalDate.of(2026, 4, 3), LocalDate.of(2026, 4, 6), HolidayType.HOLIDAY),
+        createHoliday("Tag der Arbeit", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 1), HolidayType.HOLIDAY),
+        createHoliday("Pfingsten", LocalDate.of(2026, 5, 24), LocalDate.of(2026, 5, 25), HolidayType.HOLIDAY),
+        createHoliday("Wartungsarbeiten", LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 15), HolidayType.CLOSED)
+    );
+    holidayRepository.saveAll(holidays);
+}
+
+private Holiday createHoliday(String name, LocalDate start, LocalDate end, HolidayType type) {
+    Holiday h = new Holiday();
+    h.setName(name);
+    h.setStartDate(start);
+    h.setEndDate(end);
+    h.setType(type);
+    return h;
+}
 }
