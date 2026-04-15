@@ -1,0 +1,7 @@
+Um das backend zu deployen muss zunächst railway.com eingerichtet werden und es müssen alle Variablen aus der application-production.yaml hinterlegt werden.
+Danach können Lokal folgende Befehle ausgeführt werden, um das deployment durchzuführen:
+
+npm i -g @railway/cli
+railway login
+railway link
+railway up
