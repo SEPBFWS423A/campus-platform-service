@@ -56,6 +56,7 @@ public class DataInitializer implements CommandLineRunner {
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final JobPostingRepository jobPostingRepository;
     private final CommunityEventRepository communityEventRepository;
+    private final PublicProfileRepository publicProfileRepository;
 
     @Override
     @Transactional
@@ -797,5 +798,41 @@ public class DataInitializer implements CommandLineRunner {
         if (student1003 != null && !student1005.equals(student1003)) recap.getAttendees().add(student1003);
 
         communityEventRepository.save(recap);
+
+        createDemoPublicProfiles();
+    }
+
+    private void createDemoPublicProfiles() {
+        if (publicProfileRepository.count() > 0) return;
+
+        userRepository.findByEmail(demoStudent2Email).ifPresent(student2 -> {
+            publicProfileRepository.save(PublicProfile.builder()
+                    .appUser(student2)
+                    .bio("Hey! Ich bin Student2. Ich liebe Outdoor-Aktivitäten und programmiere gerne in meiner Freizeit.")
+                    .interests("Natur, KI, Web-Entwicklung")
+                    .hobbies("Wandern, Fotografie, Gaming")
+                    .skills("Java, Spring Boot, Angular")
+                    .build());
+        });
+
+        userRepository.findByEmail("student1003.software3@campusplatform.de").ifPresent(student3 -> {
+            publicProfileRepository.save(PublicProfile.builder()
+                    .appUser(student3)
+                    .bio("Software Engineering Student, aktuell fokussiert auf mobile Apps.")
+                    .interests("Flutter, UI Design, Startups")
+                    .hobbies("Fußball, Kochen")
+                    .skills("Dart, Figma, SQL")
+                    .build());
+        });
+
+        userRepository.findByEmail("student1004.software4@campusplatform.de").ifPresent(student4 -> {
+            publicProfileRepository.save(PublicProfile.builder()
+                    .appUser(student4)
+                    .bio("Cybersecurity-Enthusiast und Kaffeeliebhaber.")
+                    .interests("Ethical Hacking, Linux, Kryptographie")
+                    .hobbies("Schach, Lesen")
+                    .skills("Python, Networking, Pentesting")
+                    .build());
+        });
     }
 }
